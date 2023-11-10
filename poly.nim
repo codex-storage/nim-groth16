@@ -41,7 +41,7 @@ func polyIsZero*(P: Poly) : bool =
       break
   return b
 
-func polyEqual*(P, Q: Poly) : bool = 
+func polyIsEqual*(P, Q: Poly) : bool = 
   let xs : seq[Fr] = P.coeffs ; let n = xs.len
   let ys : seq[Fr] = Q.coeffs ; let m = ys.len
   var b = true
@@ -106,7 +106,8 @@ func polyScale*(s: Fr, P: Poly): Poly =
 func polyMulNaive*(P, Q : Poly): Poly =
   let xs = P.coeffs ; let n1 = xs.len
   let ys = Q.coeffs ; let n2 = ys.len
-  var zs : seq[Fr]  ; let N  = n1 + n2 - 1
+  let N  = n1 + n2 - 1
+  var zs : seq[Fr] = newSeq[Fr](N) 
   for k in 0..<N:
     # 0 <= i <= min(k , n1-1)
     # 0 <= j <= min(k , n2-1)
@@ -126,7 +127,7 @@ func polyMul*(P, Q : Poly): Poly =
 
 #-------------------------------------------------------------------------------
 
-func `==`*(P, Q: Poly): bool = return polyEqual(P, Q)
+func `==`*(P, Q: Poly): bool = return polyIsEqual(P, Q)
 
 func `+`*(P, Q: Poly): Poly  = return polyAdd(P, Q)
 func `-`*(P, Q: Poly): Poly  = return polySub(P, Q)
@@ -134,6 +135,55 @@ func `*`*(P, Q: Poly): Poly  = return polyMul(P, Q)
 
 func `*`*(s: Fr  , P: Poly): Poly  = return polyScale(s, P)
 func `*`*(P: Poly, s: Fr  ): Poly  = return polyScale(s, P)
+
+#-------------------------------------------------------------------------------
+
+# the vanishing polynomial `(x^N - 1)`
+func vanishingPoly*(N: int): Poly = 
+  assert( N>=1 )
+  var cs : seq[Fr] = newSeq[Fr]( N+1 )
+  cs[0] = negFr( oneFr )
+  cs[N] = oneFr
+  return Poly(coeffs: cs)
+
+type
+  QuotRem*[T] = object
+    quot* : T 
+    rem*  : T 
+
+# divide by the vanishing polynomial `(x^N - 1)`
+# returns the quotient and remainder
+func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] = 
+  assert( N>=1 )
+  let deg  : int     = polyDegree(P)
+  let src  : seq[Fr] = P.coeffs 
+  var quot : seq[Fr] = newSeq[Fr]( max(1, deg - N + 1) )
+  var rem  : seq[Fr] = newSeq[Fr]( N )
+
+  if deg < N:
+    rem = src
+  
+  else:
+    # compute quot
+    for j in countdown(deg-N, 0):
+      if j+N <= deg-N:
+        quot[j] = src[j+N] + quot[j+N]
+      else:
+        quot[j] = src[j+N]
+    # compute rem
+    for j in 0..<N:
+      if j <= deg-N:
+        rem[j] = src[j] + quot[j]
+      else:
+        rem[j] = src[j]
+
+  return QuotRem[Poly]( quot:Poly(coeffs:quot), rem:Poly(coeffs:rem) )
+
+# divide by the vanishing polynomial `(x^N - 1)`
+func polyDivideByVanishing*(P: Poly, N: int): Poly = 
+  let qr = polyQuotRemByVanishing(P, N)
+  assert( polyIsZero(qr.rem) )
+  return qr.quot
 
 #-------------------------------------------------------------------------------
 
@@ -168,7 +218,29 @@ proc sanityCheckOneHalf*() =
   echo(toDecimalFr(invTwo * two))
   echo(toHex(invTwo))
 
-proc sanityCheckPolys*() = 
+proc sanityCheckVanishing*() = 
+  var js : seq[int] = toSeq(101..112)
+  let cs : seq[Fr]  = map( js, intToFr )
+  let P  : Poly     = Poly( coeffs:cs )
+
+  echo("degree of P = ",polyDegree(P))
+  debugPrintSeqFr("xs", P.coeffs)
+
+  let n  : int = 5
+  let QR = polyQuotRemByVanishing(P, n)
+  let Q  = QR.quot
+  let R  = QR.rem
+
+  debugPrintSeqFr("Q", Q.coeffs)
+  debugPrintSeqFr("R", R.coeffs)
+
+  let Z : Poly = vanishingPoly(n)
+  let S : Poly = Q * Z + R
+
+  debugPrintSeqFr("zs", S.coeffs)
+  echo( polyIsEqual(P,S) )
+
+proc sanityCheckNTT*() = 
   var js : seq[int] = toSeq(101..108)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )

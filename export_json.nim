@@ -64,6 +64,8 @@ proc writeG2( f: File, p: G2 ) =
   writeFp2( f , ',' , oneFp2 )
   f.writeLine("    ]")
 
+#-------------------------------------------------------------------------------
+
 # exports the proof into as a JSON file
 proc exportProof*( fpath: string, prf: Proof ) = 
 
@@ -79,6 +81,7 @@ proc exportProof*( fpath: string, prf: Proof ) =
 
 #-------------------------------------------------------------------------------
 
+#[
 func getFakeProof*() : Proof = 
   let pub : seq[Fr] = map( [1,101,102,103,117,119] , intToFr )
   let p = unsafeMkG1( intToFp(666) , intToFp(777) )
@@ -92,4 +95,6 @@ proc exportFakeProof*() =
   let prf = getFakeProof()
   exportPublicIO( "fake_pub.json" , prf )
   exportProof(    "fake_prf.json" , prf )
+]#
 
+#-------------------------------------------------------------------------------

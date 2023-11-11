@@ -15,10 +15,10 @@ At the moment only the `BN254` (aka. `alt-bn128`) curve is supported.
 
 - [ ] make it a nimble package
 - [ ] proper MSM implementation (I couldn't make constantine's one to work)
-- [ ] proper polynomial implemention (constantine's one is essentially missing)
 - [ ] compare `.r1cs` to the "coeffs" section of `.zkey`
-- [ ] make it work for different curves
+- [ ] generate fake circuit-specific setup ourselves
 - [ ] multithreaded support (MSM, and possibly also FFT)
 - [ ] add Groth16 notes
 - [ ] document the `snarkjs` circuit-specific setup `H` points convention
+- [ ] make it work for different curves
 

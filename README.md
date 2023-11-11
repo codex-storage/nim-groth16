@@ -10,10 +10,17 @@ The implementation is compatible with the `circom` ecosystem.
 
 At the moment only the `BN254` (aka. `alt-bn128`) curve is supported.
 
+### License
+
+Licensed and distributed under either of 
+[MIT license](http://opensource.org/licenses/MIT) or
+[Apache License, v2.0](http://www.apache.org/licenses/LICENSE-2.0),
+at your option. 
 
 ### TODO
 
 - [ ] make it a nimble package
+- [ ] refactor `bn128.nim` into smaller files
 - [ ] proper MSM implementation (I couldn't make constantine's one to work)
 - [ ] compare `.r1cs` to the "coeffs" section of `.zkey`
 - [ ] generate fake circuit-specific setup ourselves

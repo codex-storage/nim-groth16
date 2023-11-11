@@ -581,26 +581,28 @@ func `-=`*(p: var G2, q: G2) =    p = addG2(p,negG2(q))
 
 #-------------------------------------------------------------------------------
 
-# func msmG1( coeffs: seq[Fr] , points: seq[G1] ): G1 = 
-# 
-#   let N = coeffs.len
-#   assert( N == points.len, "incompatible sequence lengths" )
-# 
-# #  var arr1 = toOpenArray(coeffs, 0, N-1)
-# #  var arr2 = toOpenArray(points, 0, N-1)
-# 
-#   var bigcfs : seq[BigInt[254]]
-#   for x in coeffs:
-#     bigcfs.add( x.toBig() )
-# 
-#   var r : G1
-# 
-#   # [Fp,aff.G1]
-#   msm.multiScalarMul_vartime( r, 
-#     toOpenArray(bigcfs, 0, N-1),
-#     toOpenArray(points, 0, N-1) )
-# 
-#   return r
+#[
+func msmG1( coeffs: seq[Fr] , points: seq[G1] ): G1 = 
+
+  let N = coeffs.len
+  assert( N == points.len, "incompatible sequence lengths" )
+
+#  var arr1 = toOpenArray(coeffs, 0, N-1)
+#  var arr2 = toOpenArray(points, 0, N-1)
+
+  var bigcfs : seq[BigInt[254]]
+  for x in coeffs:
+    bigcfs.add( x.toBig() )
+
+  var r : G1
+
+  # [Fp,aff.G1]
+  msm.multiScalarMul_vartime( r, 
+    toOpenArray(bigcfs, 0, N-1),
+    toOpenArray(points, 0, N-1) )
+
+  return r
+]#
 
 #-------------------------------------------------------------------------------
 #

@@ -2,11 +2,12 @@
 #
 # Groth16 prover
 #
-# WARNING! the points H are *NOT* what normal people would think they are
+# WARNING! 
+# the points H in `.zkey` are *NOT* what normal people would think they are
 # See <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #
 
-#[]
+#[
 import sugar
 import constantine/math/config/curves 
 import constantine/math/io/io_fields

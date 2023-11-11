@@ -7,11 +7,11 @@ NAME="product"
 mkdir -p build
 
 # --- compile the circom code ---
+cd ${ORIG}
 circom --r1cs --wasm -o build ${NAME}.circom
 
-cd build
-
 # --- download powers-of-tau ceremony, if necessary ---
+cd ${ORIG}/build
 PTAU_FILE="power_of_tau_10.ptau"
 if ! test -f ./${PTAU_FILE}; then
   echo "downloading powers-of-tau..."
@@ -22,6 +22,7 @@ fi
 PTAU_FILE="`pwd`/${PTAU_FILE}"
 
 # --- perform circuit-specific setup ---
+cd ${ORIG}/build
 snarkjs groth16 setup ${NAME}.r1cs $PTAU_FILE ${NAME}_0000.zkey
 echo "foobar entropy" | \
 snarkjs zkey contribute ${NAME}_0000.zkey ${NAME}_0001.zkey --name="1st Contributor Name" -v
@@ -32,6 +33,7 @@ rm ${NAME}_0001.zkey
 mv ${NAME}_0002.zkey ${NAME}.zkey
 
 # --- export vericiation key ---
+cd ${ORIG}/build
 snarkjs zkey export verificationkey ${NAME}.zkey ${NAME}_vkey.json
 
 # --- create public input ---
@@ -48,8 +50,8 @@ cd $ORIG/build
 # snarkjs groth16 prove ${NAME}.zkey ${NAME}.wtns snarkjs_proof.json snarkjs_public.json
 
 # --- build & execute nim prover ---
-echo "building and executing the Nim prover..."
 cd $ORIG
+echo "building and executing the Nim prover..."
 nim c -r --processing:off example.nim
 
 cd $ORIG/build

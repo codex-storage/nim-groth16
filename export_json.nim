@@ -3,8 +3,6 @@
 # export proof and public input in `circom`-compatible JSON files
 #
 
-import std/sequtils
-
 import constantine/math/arithmetic   except Fp, Fr
 #import constantine/math/io/io_fields except Fp, Fr
 
@@ -82,6 +80,8 @@ proc exportProof*( fpath: string, prf: Proof ) =
 #-------------------------------------------------------------------------------
 
 #[
+#import std/sequtils
+
 func getFakeProof*() : Proof = 
   let pub : seq[Fr] = map( [1,101,102,103,117,119] , intToFr )
   let p = unsafeMkG1( intToFp(666) , intToFp(777) )

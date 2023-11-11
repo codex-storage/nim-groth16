@@ -17,6 +17,7 @@ import constantine/math/io/io_fields
 import bn128
 import domain
 import ntt
+import misc
 
 #-------------------------------------------------------------------------------
 
@@ -74,25 +75,25 @@ func polyNeg*(P: Poly) : Poly =
 func polyAdd*(P, Q: Poly) : Poly =
   let xs = P.coeffs ; let n = xs.len
   let ys = Q.coeffs ; let m = ys.len
-  var zs : seq[Fr]
+  var zs : seq[Fr] = newSeq[Fr](max(n,m))
   if n >= m:
-    for i in 0..<m: zs.add( xs[i] + ys[i] )
-    for i in m..<n: zs.add( xs[i]         )
+    for i in 0..<m: zs[i] = ( xs[i] + ys[i] )
+    for i in m..<n: zs[i] = ( xs[i]         )
   else:
-    for i in 0..<n: zs.add( xs[i] + ys[i] )
-    for i in n..<m: zs.add(         ys[i] )
+    for i in 0..<n: zs[i] = ( xs[i] + ys[i] )
+    for i in n..<m: zs[i] = (         ys[i] )
   return Poly(coeffs: zs)
 
 func polySub*(P, Q: Poly) : Poly =
   let xs = P.coeffs ; let n = xs.len
   let ys = Q.coeffs ; let m = ys.len
-  var zs : seq[Fr]
+  var zs : seq[Fr] = newSeq[Fr](max(n,m))
   if n >= m:
-    for i in 0..<m: zs.add( xs[i]  - ys[i] )
-    for i in m..<n: zs.add( xs[i]          )
+    for i in 0..<m: zs[i] = ( xs[i]  - ys[i] )
+    for i in m..<n: zs[i] = ( xs[i]          )
   else:
-    for i in 0..<n: zs.add( xs[i]  + ys[i] )
-    for i in n..<m: zs.add( zeroFr - ys[i] )
+    for i in 0..<n: zs[i] = ( xs[i]  + ys[i] )
+    for i in n..<m: zs[i] = (   negFr( ys[i] ))
   return Poly(coeffs: zs)
 
 #-------------------------------------------------------------------------------
@@ -122,7 +123,28 @@ func polyMulNaive*(P, Q : Poly): Poly =
       zs[k] += xs[i] * ys[j]
   return Poly(coeffs: zs)
 
+#-------------------------------------------------------------------------------
+
+# multiply two polynomials using FFT
+func polyMulFFT*(P, Q: Poly): Poly = 
+  let n1 = P.coeffs.len
+  let n2 = Q.coeffs.len
+
+  let log2 : int    = max( ceilingLog2(n1) , ceilingLog2(n2) ) + 1
+  let N    : int    = (1 shl log2)
+  let D    : Domain = createDomain( N )
+
+  let us : seq[Fr] = extendAndForwardNTT( P.coeffs, D )
+  let vs : seq[Fr] = extendAndForwardNTT( Q.coeffs, D )
+  let zs : seq[Fr] = collect( newSeq, (for i in 0..<N: us[i]*vs[i] ))
+  let ws : seq[Fr] = inverseNTT( zs, D ) 
+
+  return Poly(coeffs: ws)
+
+#-------------------------------------------------------------------------------
+
 func polyMul*(P, Q : Poly): Poly =
+  # return polyMulFFT(P, Q)   
   return polyMulNaive(P, Q)   
 
 #-------------------------------------------------------------------------------
@@ -138,13 +160,19 @@ func `*`*(P: Poly, s: Fr  ): Poly  = return polyScale(s, P)
 
 #-------------------------------------------------------------------------------
 
-# the vanishing polynomial `(x^N - 1)`
-func vanishingPoly*(N: int): Poly = 
+# the generalized vanishing polynomial `(a*x^N - b)`
+func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly = 
   assert( N>=1 )
   var cs : seq[Fr] = newSeq[Fr]( N+1 )
-  cs[0] = negFr( oneFr )
-  cs[N] = oneFr
+  cs[0] = negFr(b)
+  cs[N] = a
   return Poly(coeffs: cs)
+
+# the vanishing polynomial `(x^N - 1)`
+func vanishingPoly*(N: int): Poly = 
+  return generalizedVanishingPoly(N, oneFr, oneFr)
+
+#-------------------------------------------------------------------------------
 
 type
   QuotRem*[T] = object
@@ -164,13 +192,15 @@ func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] =
     rem = src
   
   else:
-    # compute quot
+
+    # compute quotient
     for j in countdown(deg-N, 0):
       if j+N <= deg-N:
         quot[j] = src[j+N] + quot[j+N]
       else:
         quot[j] = src[j+N]
-    # compute rem
+
+    # compute remainder
     for j in 0..<N:
       if j <= deg-N:
         rem[j] = src[j] + quot[j]
@@ -191,14 +221,8 @@ func polyDivideByVanishing*(P: Poly, N: int): Poly =
 func polyForwardNTT*(P: Poly, D: Domain): seq[Fr] =
   let n = P.coeffs.len
   assert( n <= D.domainSize , "the domain must be as least as big as the polynomial" )
-
-  if n == D.domainSize:
-    let src : seq[Fr] = P.coeffs
-    return forwardNTT(src, D)
-  else:
-    var src : seq[Fr] = P.coeffs
-    for i in n..<D.domainSize: src.add( zeroFr )
-    return forwardNTT(src, D)
+  let src : seq[Fr] = P.coeffs
+  return forwardNTT(src, D)
 
 #---------------------------------------
 
@@ -210,6 +234,8 @@ func polyInverseNTT*(ys: seq[Fr], D: Domain): Poly =
   return Poly(coeffs: tgt)
 
 #-------------------------------------------------------------------------------
+
+#[
 
 proc sanityCheckOneHalf*() =
   let two    = oneFr + oneFr
@@ -224,20 +250,20 @@ proc sanityCheckVanishing*() =
   let P  : Poly     = Poly( coeffs:cs )
 
   echo("degree of P = ",polyDegree(P))
-  debugPrintSeqFr("xs", P.coeffs)
+  debugPrintFrSeq("xs", P.coeffs)
 
   let n  : int = 5
   let QR = polyQuotRemByVanishing(P, n)
   let Q  = QR.quot
   let R  = QR.rem
 
-  debugPrintSeqFr("Q", Q.coeffs)
-  debugPrintSeqFr("R", R.coeffs)
+  debugPrintFrSeq("Q", Q.coeffs)
+  debugPrintFrSeq("R", R.coeffs)
 
   let Z : Poly = vanishingPoly(n)
   let S : Poly = Q * Z + R
 
-  debugPrintSeqFr("zs", S.coeffs)
+  debugPrintFrSeq("zs", S.coeffs)
   echo( polyIsEqual(P,S) )
 
 proc sanityCheckNTT*() = 
@@ -249,9 +275,28 @@ proc sanityCheckNTT*() =
   let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) ) 
   let zs : seq[Fr]  = polyForwardNTT(P ,D)
   let Q  : Poly     = polyInverseNTT(zs,D)
-  debugPrintSeqFr("xs", xs)
-  debugPrintSeqFr("ys", ys)
-  debugPrintSeqFr("zs", zs)
-  debugPrintSeqFr("us", Q.coeffs)
+  debugPrintFrSeq("xs", xs)
+  debugPrintFrSeq("ys", ys)
+  debugPrintFrSeq("zs", zs)
+  debugPrintFrSeq("us", Q.coeffs)
+
+proc sanityCheckMulFFT*() = 
+  var js : seq[int] = toSeq(101..110)
+  let cs : seq[Fr]  = map( js, intToFr )
+  let P  : Poly     = Poly( coeffs:cs )
+
+  var ks : seq[int] = toSeq(1001..1020)
+  let ds : seq[Fr]  = map( ks, intToFr )
+  let Q  : Poly     = Poly( coeffs:ds )
+
+  let R1 : Poly = polyMulNaive( P , Q )
+  let R2 : Poly = polyMulFFT(   P , Q )
+
+  # debugPrintFrSeq("naive coeffs", R1.coeffs)
+  # debugPrintFrSeq("fft coeffs",   R2.coeffs)
+
+  echo( "multiply test = ", polyIsEqual(R1,R2) )
+
+]#
 
 #-------------------------------------------------------------------------------

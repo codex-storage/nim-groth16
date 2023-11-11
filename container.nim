@@ -67,8 +67,6 @@ proc readSection[T] ( expectedMagic: string
   let sectLen = int( stream.readUint64() )
   let oldpos = stream.getPosition()
   if filt(sectId):
-    # echo("section id  = ",sectId )
-    # echo("section len = ",sectLen)
     callback(stream, sectId, sectLen, user)
   stream.setPosition(oldpos + sectLen)
 
@@ -89,7 +87,7 @@ proc parseContainer*[T] ( expectedMagic: string
   let version = stream.readUint32()
   assert( version == uint32(expectedVersion) , "not a version " & ($expectedVersion) & " `" & expectedMagic & "` file" )
   let nsections = stream.readUint32()
-  echo("number of sections = ",nsections)
+  # echo("number of sections = ",nsections)
 
   for i in 1..nsections:
     readSection(expectedMagic, expectedVersion, stream, user, callback, filt)

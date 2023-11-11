@@ -1,4 +1,7 @@
 
+#
+# miscellaneous routines
+#
 
 #-------------------------------------------------------------------------------
 
@@ -16,13 +19,26 @@ func ceilingLog2* (x : int) : int =
   else:
     return (floorLog2(x-1) + 1)
 
-#
-# import std/math
-#
-# proc sanityCheckLog2* () =
-#   for i in 0..18:
-#     let x = float64(i)
-#     echo( i," | ",floorLog2(i),"=",floor(log2(x))," | ",ceilingLog2(i),"=",ceil(log2(x)) )
-#
+#-------------------
+
+#[
+import std/math
+
+proc sanityCheckLog2* () =
+  for i in 0..18:
+    let x = float64(i)
+    echo( i," | ",floorLog2(i),"=",floor(log2(x))," | ",ceilingLog2(i),"=",ceil(log2(x)) )
+]#
+
+#-------------------------------------------------------------------------------
+
+#[
+func rotateSeq[T](xs: seq[T], ofs: int): seq[T] =
+  let n = xs.len
+  var ys : seq[T]
+  for i in (0..<n):
+    ys.add( xs[ (i+n+ofs) mod n ] )
+  return ys
+]#
 
 #-------------------------------------------------------------------------------

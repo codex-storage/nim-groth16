@@ -2,4 +2,5 @@
 _bck*
 tmp
 main
+main.nim
 *.json

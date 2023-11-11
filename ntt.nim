@@ -1,9 +1,10 @@
 
 #
-# Number-theoretic transform
+# Number-theoretic transform 
+# (that is, FFT for polynomials over finite fields)
 #
 
-import std/sequtils
+#-------------------------------------------------------------------------------
 
 import constantine/math/arithmetic except Fp,Fr
 import constantine/math/io/io_fields
@@ -67,6 +68,19 @@ func forwardNTT*(src: seq[Fr], D: Domain): seq[Fr] =
                    , buf , 0
                    , tgt , 0 )
   return tgt
+
+# pads the input with zeros to get a pwoer of two size
+func extendAndForwardNTT*(src: seq[Fr], D: Domain): seq[Fr] =
+  let n = src.len
+  let N = D.domainSize 
+  assert( n <= N )
+  if n == N:
+    return forwardNTT(src, D)
+  else:
+    var padded : seq[Fr] = newSeq[Fr]( N )
+    for i in 0..<n: padded[i] = src[i]
+    # for i in n..<N: padded[i] = zeroFr 
+    return forwardNTT(padded, D)
 
 #-------------------------------------------------------------------------------
 

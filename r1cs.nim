@@ -82,11 +82,12 @@ type
 #-------------------------------------------------------------------------------
 
 proc parseSection1_header( stream: Stream, user: var R1CS, sectionLen: int ) =
-  echo "\nparsing r1cs header"
+  # echo "\nparsing r1cs header"
   
   let (n8r, r) = parsePrimeField( stream )     # size of the scalar field
-  echo("r = ",toDecimalBig(r))
   user.r = r;
+
+  # echo("r = ",toDecimalBig(r))
 
   assert( sectionLen == 4 + n8r + 16 + 8 + 4, "unexpected section length")
 
@@ -104,14 +105,14 @@ proc parseSection1_header( stream: Stream, user: var R1CS, sectionLen: int ) =
   let nConstr = int( stream.readUint32() )
   user.nConstr = nConstr
 
-  echo("witness config = ",cfg)
-  echo("nConstr = ",nConstr)
+  # echo("witness config = ",cfg)
+  # echo("nConstr = ",nConstr)
 
 #-------------------------------------------------------------------------------
 
 proc loadTerm( stream: Stream ): Term = 
   let idx   = int( stream.readUint32() )
-  let coeff = loadValueFr( stream )
+  let coeff = loadValueFrMont( stream )
   return (wireIdx:idx, value:coeff)
 
 proc loadLinComb( stream: Stream ): LinComb = 
@@ -139,9 +140,9 @@ proc parseSection2_constraints( stream: Stream, user: var R1CS, sectionLen: int 
     ncoeffsB += abc.B.len
     ncoeffsC += abc.C.len
   user.constraints = constr
-  echo( "number of nonzero coefficients in matrix A = ", ncoeffsA )
-  echo( "number of nonzero coefficients in matrix B = ", ncoeffsB )
-  echo( "number of nonzero coefficients in matrix C = ", ncoeffsC )
+  # echo( "number of nonzero coefficients in matrix A = ", ncoeffsA )
+  # echo( "number of nonzero coefficients in matrix B = ", ncoeffsB )
+  # echo( "number of nonzero coefficients in matrix C = ", ncoeffsC )
 
 #-------------------------------------------------------------------------------
 
@@ -166,9 +167,10 @@ proc r1csCallback( stream:  Stream
     of 3: parseSection3_wireToLabel( stream, user, sectLen )
     else: discard
 
-proc parseR1CS* (fname: string) = 
+proc parseR1CS* (fname: string): R1CS = 
   var r1cs : R1CS
   parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, proc (id: int): bool = id == 1 )
   parseContainer( "r1cs", 1, fname, r1cs, r1csCallback, proc (id: int): bool = id != 1 )
+  return r1cs
 
 #-------------------------------------------------------------------------------

@@ -3,9 +3,9 @@
 # power-of-two sized multiplicative FFT domains in the scalar field
 #
 
-import constantine/math/io/io_bigints
 import constantine/math/arithmetic   except Fp,Fr
 import constantine/math/io/io_fields except Fp,Fr
+#import constantine/math/io/io_bigints
 
 import ./bn128
 import ./misc
@@ -31,8 +31,8 @@ func createDomain*(size: int): Domain =
   let gen  : Fr   = smallPowFr(gen28, expo)
 
   let halfSize = size div 2
-  let a : Fr = smallPowFr(gen, uint(size    ))
-  let b : Fr = smallPowFr(gen, uint(halfSize))
+  let a : Fr = smallPowFr(gen, size    )
+  let b : Fr = smallPowFr(gen, halfSize)
   assert(     bool(a == oneFr) , "domain generator sanity check /A" )
   assert( not bool(b == oneFr) , "domain generator sanity check /B" )
 

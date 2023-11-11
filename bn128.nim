@@ -1,6 +1,19 @@
+#
+# the `alt-bn128` elliptic curve
+#
+# See for example <https://hackmd.io/@jpw/bn254>
+#
+# p = 21888242871839275222246405745257275088696311157297823662689037894645226208583
+# r = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+#
+# equation: y^2 = x^3 + 3
+#
+
+import sugar
 
 import std/bitops
 import std/strutils
+import std/sequtils
 import std/streams
 import std/random
 
@@ -14,8 +27,8 @@ import constantine/math/extension_fields/towers                 as ext
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff
 import constantine/math/elliptic/ec_shortweierstrass_projective as prj
 import constantine/math/pairings/pairings_bn                    as ate
-import constantine/math/elliptic/ec_multi_scalar_mul            as msm
 import constantine/math/elliptic/ec_scalar_mul                  as scl
+# import constantine/math/elliptic/ec_multi_scalar_mul            as msm
 
 #-------------------------------------------------------------------------------
 
@@ -118,6 +131,12 @@ func smallPowFr*(base: Fr, expo: uint): Fr =
     square(s)
   return a
 
+func smallPowFr*(base: Fr, expo: int): Fr = 
+  if expo >= 0:
+    return smallPowFr( base, uint(expo) )
+  else:
+    return smallPowFr( invFr(base) , uint(-expo) )
+
 #-------------------------------------------------------------------------------
 
 func toDecimalBig*[n](a : BigInt[n]): string =
@@ -140,11 +159,59 @@ func toDecimalFr*(a : Fr): string =
 
 #-------------------------------------------------------------------------------
 
-proc debugPrintSeqFr*(msg: string, xs: seq[Fr]) =
+proc debugPrintFp*(prefix: string, x: Fp) =
+  echo(prefix & toDecimalFp(x))
+
+proc debugPrintFp2*(prefix: string, z: Fp2) =
+  echo(prefix & " 1 ~> " & toDecimalFp(z.coords[0]))
+  echo(prefix & " u ~> " & toDecimalFp(z.coords[1]))
+
+proc debugPrintFr*(prefix: string, x: Fr) =
+  echo(prefix & toDecimalFr(x))
+
+proc debugPrintFrSeq*(msg: string, xs: seq[Fr]) =
   echo "---------------------"
   echo msg
   for x in xs: 
-    echo("  " & toDecimalFr(x))
+    debugPrintFr( "  " , x )
+
+proc debugPrintG1*(msg: string, pt: G1) =
+  echo(msg & ":")
+  debugPrintFp( " x = ", pt.x )
+  debugPrintFp( " y = ", pt.y )
+
+proc debugPrintG2*(msg: string, pt: G2) =
+  echo(msg & ":")
+  debugPrintFp2( " x = ", pt.x )
+  debugPrintFp2( " y = ", pt.y )
+
+#-------------------------------------------------------------------------------
+
+# Montgomery batch inversion
+func batchInverse*( xs: seq[Fr] ) : seq[Fr] = 
+  let n = xs.len
+  assert(n>0)
+  var us : seq[Fr] = newSeq[Fr](n+1)
+  var a = xs[0]
+  us[0] = oneFr
+  us[1] = a
+  for i in 1..<n: ( a *= xs[i] ; us[i+1] = a )
+  var vs : seq[Fr] = newSeq[Fr](n)
+  vs[n-1] = invFr( us[n] )
+  for i in countdown(n-2,0): vs[i] = vs[i+1] * xs[i+1]
+  return collect( newSeq, (for i in 0..<n: us[i]*vs[i] ) )
+
+proc sanityCheckBatchInverse*() =
+  let xs : seq[Fr] = map( toSeq(101..137) , intToFr )
+  let ys = batchInverse( xs )
+  let zs = collect( newSeq, (for x in xs: invFr(x)) )
+  let n = xs.len
+  # for i in 0..<n: echo(i," | batch = ",toDecimalFr(ys[i])," | ref = ",toDecimalFr(zs[i]) )
+  for i in 0..<n:
+    if not bool(ys[i] == zs[i]): 
+      echo "batch inverse test FAILED!"
+      return      
+  echo "batch iverse test OK."
 
 #-------------------------------------------------------------------------------
 # random values
@@ -321,9 +388,10 @@ proc checkMontgomeryConstants*() =
 
 #---------------------------------------
 
-# the binary files used by the `circom` ecosystem always use little-endian 
-# Montgomery representation. So when we unmarshal with Constantine, it will
-# give the wrong result. Calling this function on the result fixes that.
+# the binary files used by the `circom` ecosystem (EXCEPT the witness file!)
+# always use little-endian Montgomery representation. So when we unmarshal 
+# with Constantine, it will give the wrong result. Calling this function on 
+# the result fixes that.
 func fromMontgomeryFp*(x : Fp) : Fp = 
   var y : Fp = x;
   y *= fpInvMontR
@@ -334,19 +402,41 @@ func fromMontgomeryFr*(x : Fr) : Fr =
   y *= frInvMontR
   return y
 
+func toMontgomeryFr*(x : Fr) : Fr = 
+  var y : Fr = x;
+  y *= frMontR
+  return y
+
 #-------------------------------------------------------------------------------
 # Unmarshalling field elements
 # (note: circom binary files use little-endian Montgomery representation)
+# Except, in witness files, where the standard representation is used
+# And, EXCEPT in the zkey coefficients, where apparently DOUBLE Montgomery encoding is used ???
 #
 
-func unmarshalFp* ( bs: array[32,byte] ) : Fp = 
+# WTF Jordi, go home you are drunk
+func unmarshalFrWTF* ( bs: array[32,byte] ) : Fr = 
+  var big : BigInt[254] 
+  unmarshal( big, bs, littleEndian );  
+  var x : Fr
+  x.fromBig( big )
+  return fromMontgomeryFr(fromMontgomeryFr(x))
+
+func unmarshalFrStd* ( bs: array[32,byte] ) : Fr = 
+  var big : BigInt[254] 
+  unmarshal( big, bs, littleEndian );  
+  var x : Fr
+  x.fromBig( big )
+  return x
+
+func unmarshalFpMont* ( bs: array[32,byte] ) : Fp = 
   var big : BigInt[254] 
   unmarshal( big, bs, littleEndian );  
   var x : Fp
   x.fromBig( big )
   return fromMontgomeryFp(x)
 
-func unmarshalFr* ( bs: array[32,byte] ) : Fr = 
+func unmarshalFrMont* ( bs: array[32,byte] ) : Fr = 
   var big : BigInt[254] 
   unmarshal( big, bs, littleEndian );  
   var x : Fr
@@ -355,65 +445,85 @@ func unmarshalFr* ( bs: array[32,byte] ) : Fr =
 
 #-------------------------------------------------------------------------------
 
-func unmarshalFpSeq* ( len: int,  bs: openArray[byte] ) : seq[Fp] = 
+func unmarshalFpMontSeq* ( len: int,  bs: openArray[byte] ) : seq[Fp] = 
   var vals  : seq[Fp] = newSeq[Fp]( len )
   var bytes : array[32,byte]
   for i in 0..<len:
     copyMem( addr(bytes) , unsafeAddr(bs[32*i]) , 32 )
-    vals[i] = unmarshalFp( bytes )
+    vals[i] = unmarshalFpMont( bytes )
   return vals
 
-func unmarshalFrSeq* ( len: int,  bs: openArray[byte] ) : seq[Fr] = 
+func unmarshalFrMontSeq* ( len: int,  bs: openArray[byte] ) : seq[Fr] = 
   var vals  : seq[Fr] = newSeq[Fr]( len )
   var bytes : array[32,byte]
   for i in 0..<len:
     copyMem( addr(bytes) , unsafeAddr(bs[32*i]) , 32 )
-    vals[i] = unmarshalFr( bytes )
+    vals[i] = unmarshalFrMont( bytes )
   return vals
 
 #-------------------------------------------------------------------------------
 
-proc loadValueFp*( stream: Stream ) : Fp = 
+proc loadValueFrWTF*( stream: Stream ) : Fr = 
+  var bytes : array[32,byte]
+  let n = stream.readData( addr(bytes), 32 )
+  # for i in 0..<32: stdout.write(" " & toHex(bytes[i]))
+  # echo("")
+  assert( n == 32 )
+  return unmarshalFrWTF(bytes)
+
+proc loadValueFrStd*( stream: Stream ) : Fr = 
   var bytes : array[32,byte]
   let n = stream.readData( addr(bytes), 32 )
   assert( n == 32 )
-  return unmarshalFp(bytes)
+  return unmarshalFrStd(bytes)
 
-proc loadValueFr*( stream: Stream ) : Fr = 
+proc loadValueFrMont*( stream: Stream ) : Fr = 
   var bytes : array[32,byte]
   let n = stream.readData( addr(bytes), 32 )
   assert( n == 32 )
-  return unmarshalFr(bytes)
+  return unmarshalFrMont(bytes)
 
-proc loadValueFp2*( stream: Stream ) : Fp2 = 
-  let i = loadValueFp( stream )
-  let u = loadValueFp( stream )
+proc loadValueFpMont*( stream: Stream ) : Fp = 
+  var bytes : array[32,byte]
+  let n = stream.readData( addr(bytes), 32 )
+  assert( n == 32 )
+  return unmarshalFpMont(bytes)
+
+proc loadValueFp2Mont*( stream: Stream ) : Fp2 = 
+  let i = loadValueFpMont( stream )
+  let u = loadValueFpMont( stream )
   return mkFp2(i,u)
 
 #---------------------------------------
 
-proc loadValuesFp*( len: int, stream: Stream ) : seq[Fp] = 
-  var values : seq[Fp]
-  for i in 1..len:
-    values.add( loadValueFp(stream) )
-  return values
-
-proc loadValuesFr*( len: int, stream: Stream ) : seq[Fr] = 
+proc loadValuesFrStd*( len: int, stream: Stream ) : seq[Fr] = 
   var values : seq[Fr]
   for i in 1..len:
-    values.add( loadValueFr(stream) )
+    values.add( loadValueFrStd(stream) )
+  return values
+
+proc loadValuesFpMont*( len: int, stream: Stream ) : seq[Fp] = 
+  var values : seq[Fp]
+  for i in 1..len:
+    values.add( loadValueFpMont(stream) )
+  return values
+
+proc loadValuesFrMont*( len: int, stream: Stream ) : seq[Fr] = 
+  var values : seq[Fr]
+  for i in 1..len:
+    values.add( loadValueFrMont(stream) )
   return values
 
 #-------------------------------------------------------------------------------
 
 proc loadPointG1*( stream: Stream ) : G1 = 
-  let x = loadValueFp( stream )
-  let y = loadValueFp( stream )
+  let x = loadValueFpMont( stream )
+  let y = loadValueFpMont( stream )
   return mkG1(x,y)
 
 proc loadPointG2*( stream: Stream ) : G2 = 
-  let x = loadValueFp2( stream )
-  let y = loadValueFp2( stream )
+  let x = loadValueFp2Mont( stream )
+  let y = loadValueFp2Mont( stream )
   return mkG2(x,y)
 
 #---------------------------------------

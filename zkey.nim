@@ -52,6 +52,8 @@
 #   compute (C*witness)[i] = (A*witness)[i] * (B*witness)[i]
 #   These 3 column vectors is all we need in the proof generation.
 #
+#   WARNING! It appears that the values here are *doubly Montgomery encoded* (?!)
+#
 # 5: PointsA
 # ----------
 #   the curve points [A_j(tau)]_1 in G1
@@ -74,7 +76,9 @@
 #
 # 9: PointsH
 # ----------
-#   the curve points [delta^-1 * tau^i * Z(tau)]
+#   what normally should be the curve points [delta^-1 * tau^i * Z(tau)]
+#   HOWEVER, they are NOT! (??)
+#   See <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #   length = 2 * n8p * domSize = domSize G1 points
 #
 # 10: Contributions
@@ -82,63 +86,19 @@
 #   ??? (but not required for proving, only for checking that the `.zkey` file is valid)
 #
 
+#-------------------------------------------------------------------------------
+
 import std/streams
 
 import constantine/math/arithmetic except Fp, Fr
-import constantine/math/io/io_bigints
-
+#import constantine/math/io/io_bigints
+ 
 import ./bn128
+import ./zkey_types
 import ./container
 import ./misc
 
 #-------------------------------------------------------------------------------
-
-type 
-
-  GrothHeader* = object
-    p : BigInt[256]
-    r : BigInt[256] 
-    nvars : int
-    npubs : int
-    domainSize    : int
-    logDomainSize : int
-
-  SpecPoints* = object
-    alpha1      : G1
-    beta1       : G1
-    beta2       : G2
-    gamma2      : G2
-    delta1      : G1
-    delta2      : G2
-
-  VerifierPoints* = object
-    pointsIC    : seq[G1]
-
-  ProverPoints* = object
-    pointsA1    : seq[G1]
-    pointsB1    : seq[G1]
-    pointsB2    : seq[G2]
-    pointsC1    : seq[G1]
-    pointsH1    : seq[G1]
-
-  MatrixSel* = enum
-    MatrixA
-    MatrixB
-    MatrixC
-
-  Coeff* = object
-    matrix : MatrixSel
-    row    : int
-    col    : int
-    coeff  : Fr
-
-  ZKey* = object
-    sectionMask : uint32
-    header      : GrothHeader
-    specPoints  : SpecPoints
-    vPoints     : VerifierPoints
-    pPoints     : ProverPoints
-    coeffs      : seq[Coeff]
 
 proc parseSection1_proverType ( stream: Stream, user: var Zkey, sectionLen: int ) = 
   assert( sectionLen == 4 , "unexpected section length" )  
@@ -148,13 +108,13 @@ proc parseSection1_proverType ( stream: Stream, user: var Zkey, sectionLen: int 
 #-------------------------------------------------------------------------------
 
 proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int ) =
-  echo "\nparsing the Groth16 zkey header"
+  # echo "\nparsing the Groth16 zkey header"
 
   let (n8p, p) = parsePrimeField( stream )     # size of the base field
   let (n8r, r) = parsePrimeField( stream )     # size of the scalar field
 
-  echo("p = ",toDecimalBig(p))
-  echo("r = ",toDecimalBig(r))
+  # echo("p = ",toDecimalBig(p))
+  # echo("r = ",toDecimalBig(r))
 
   assert( sectionLen == 2*4 + n8p + n8r + 3*4 + 3*64 + 3*128 , "unexpected section length" )
 
@@ -167,6 +127,7 @@ proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int 
 
   assert( bool(p == primeP) , "expecting the alt-bn128 curve" )
   assert( bool(r == primeR) , "expecting the alt-bn128 curve" )
+  header.curve = "bn128"
 
   let nvars   = int( stream.readUint32() )
   let npubs   = int( stream.readUint32() )
@@ -175,9 +136,9 @@ proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int 
 
   assert( (1 shl log2siz) == domsiz , "domain size should be a power of two" )
 
-  echo("nvars  = ",nvars)
-  echo("npubs  = ",npubs)
-  echo("domsiz = ",domsiz)
+  # echo("nvars  = ",nvars)
+  # echo("npubs  = ",npubs)
+  # echo("domsiz = ",domsiz)
 
   header.nvars      = nvars
   header.npubs      = npubs
@@ -194,6 +155,7 @@ proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int 
   spec.gamma2  = loadPointG2( stream )
   spec.delta1  = loadPointG1( stream )
   spec.delta2  = loadPointG2( stream )
+  spec.alphaBeta = pairing( spec.alpha1, spec.beta2 )
   user.specPoints = spec
 
 #-------------------------------------------------------------------------------
@@ -206,9 +168,9 @@ proc parseSection4_Coeffs( stream: Stream, user: var ZKey, sectionLen: int ) =
   
   var coeffs : seq[Coeff]
   for i in 1..ncoeffs:
-    let m = int( stream.readUint32() )
-    let r = int( stream.readUint32() )
-    let c = int( stream.readUint32() )
+    let m = int( stream.readUint32() )  # which matrix
+    let r = int( stream.readUint32() )  # row (equation index)
+    let c = int( stream.readUint32() )  # column (witness index)
     assert( m >= 0 and m <= 2 , "invalid matrix selector" )
     let sel : MatrixSel = case m
       of 0: MatrixA
@@ -217,7 +179,7 @@ proc parseSection4_Coeffs( stream: Stream, user: var ZKey, sectionLen: int ) =
       else: raise newException(AssertionDefect, "fatal error")
     assert( r >= 0 and r < nrows, "row index out of range"    )
     assert( c >= 0 and c < ncols, "column index out of range" )
-    let cf = loadValueFr( stream )
+    let cf = loadValueFrWTF( stream )      # Jordi, WTF is this encoding ?!?!?!!111
     let entry = Coeff( matrix:sel, row:r, col:c, coeff:cf )
     coeffs.add( entry )
   
@@ -270,10 +232,11 @@ proc zkeyCallback(stream: Stream, sectId: int, sectLen: int, user: var ZKey) =
     of 9: parseSection9_PointsH1(    stream, user, sectLen )
     else: discard
 
-proc parseZKey* (fname: string) = 
+proc parseZKey* (fname: string): ZKey = 
   var zkey : ZKey
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 1 )
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id == 2 )
   parseContainer( "zkey", 1, fname, zkey, zkeyCallback, proc (id: int): bool = id >= 3 )
+  return zkey
 
 #-------------------------------------------------------------------------------

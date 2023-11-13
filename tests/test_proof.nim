@@ -1,14 +1,12 @@
 
-import ./groth16
-import ./witness
-import ./r1cs
-import ./zkey
-import ./zkey_types
-import ./fake_setup
+import pkg/groth16
+import pkg/witness
+import pkg/zkey
+import pkg/zkey_types
 
 #-------------------------------------------------------------------------------
 
-proc testProveAndVerify*( zkey_fname, wtns_fname: string): Proof = 
+proc testProveAndVerify*( zkey_fname, wtns_fname: string): Proof =
 
   echo("parsing witness & zkey files...")
   let witness = parseWitness( wtns_fname)
@@ -28,7 +26,7 @@ proc testProveAndVerify*( zkey_fname, wtns_fname: string): Proof =
 
 #-------------------------------------------------------------------------------
 
-proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): Proof = 
+proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): Proof =
   echo("trusted setup flavour = ",flavour)
 
   echo("parsing witness & r1cs files...")

@@ -19,7 +19,7 @@ import misc
 
 #-------------------------------------------------------------------------------
 
-type 
+type
   Poly* = object
     coeffs* : seq[Fr]
 
@@ -31,7 +31,7 @@ func polyDegree*(P: Poly) : int =
   while isZeroFr(xs[d]) and (d >= 0): d -= 1
   return d
 
-func polyIsZero*(P: Poly) : bool = 
+func polyIsZero*(P: Poly) : bool =
   let xs = P.coeffs ; let n = xs.len
   var b = true
   for i in 0..<n:
@@ -40,7 +40,7 @@ func polyIsZero*(P: Poly) : bool =
       break
   return b
 
-func polyIsEqual*(P, Q: Poly) : bool = 
+func polyIsEqual*(P, Q: Poly) : bool =
   let xs : seq[Fr] = P.coeffs ; let n = xs.len
   let ys : seq[Fr] = Q.coeffs ; let m = ys.len
   var b = true
@@ -106,13 +106,13 @@ func polyMulNaive*(P, Q : Poly): Poly =
   let xs = P.coeffs ; let n1 = xs.len
   let ys = Q.coeffs ; let n2 = ys.len
   let N  = n1 + n2 - 1
-  var zs : seq[Fr] = newSeq[Fr](N) 
+  var zs : seq[Fr] = newSeq[Fr](N)
   for k in 0..<N:
     # 0 <= i <= min(k , n1-1)
     # 0 <= j <= min(k , n2-1)
     # k = i + j
     # 0 >= i = k - j >= k - min(k , n2-1)
-    # 0 >= j = k - i >= k - min(k , n1-1)   
+    # 0 >= j = k - i >= k - min(k , n1-1)
     let A : int = max( 0 , k - min(k , n2-1) )
     let B : int = min( k , n1-1 )
     zs[k] = zeroFr
@@ -124,7 +124,7 @@ func polyMulNaive*(P, Q : Poly): Poly =
 #-------------------------------------------------------------------------------
 
 # multiply two polynomials using FFT
-func polyMulFFT*(P, Q: Poly): Poly = 
+func polyMulFFT*(P, Q: Poly): Poly =
   let n1 = P.coeffs.len
   let n2 = Q.coeffs.len
 
@@ -135,7 +135,7 @@ func polyMulFFT*(P, Q: Poly): Poly =
   let us : seq[Fr] = extendAndForwardNTT( P.coeffs, D )
   let vs : seq[Fr] = extendAndForwardNTT( Q.coeffs, D )
   let zs : seq[Fr] = collect( newSeq, (for i in 0..<N: us[i]*vs[i] ))
-  let ws : seq[Fr] = inverseNTT( zs, D ) 
+  let ws : seq[Fr] = inverseNTT( zs, D )
 
   return Poly(coeffs: ws)
 
@@ -143,8 +143,8 @@ func polyMulFFT*(P, Q: Poly): Poly =
 
 # WARNING: this is using the naive implementation!
 func polyMul*(P, Q : Poly): Poly =
-  # return polyMulFFT(P, Q)   
-  return polyMulNaive(P, Q)   
+  # return polyMulFFT(P, Q)
+  return polyMulNaive(P, Q)
 
 #-------------------------------------------------------------------------------
 
@@ -160,7 +160,7 @@ func `*`*(P: Poly, s: Fr  ): Poly  = return polyScale(s, P)
 #-------------------------------------------------------------------------------
 
 # the generalized vanishing polynomial `(a*x^N - b)`
-func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly = 
+func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly =
   assert( N>=1 )
   var cs : seq[Fr] = newSeq[Fr]( N+1 )
   cs[0] = negFr(b)
@@ -168,31 +168,31 @@ func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly =
   return Poly(coeffs: cs)
 
 # the vanishing polynomial `(x^N - 1)`
-func vanishingPoly*(N: int): Poly = 
+func vanishingPoly*(N: int): Poly =
   return generalizedVanishingPoly(N, oneFr, oneFr)
 
-func vanishingPoly*(D: Domain): Poly = 
+func vanishingPoly*(D: Domain): Poly =
   return vanishingPoly(D.domainSize)
 
 #-------------------------------------------------------------------------------
 
 type
   QuotRem*[T] = object
-    quot* : T 
-    rem*  : T 
+    quot* : T
+    rem*  : T
 
 # divide by the vanishing polynomial `(x^N - 1)`
 # returns the quotient and remainder
-func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] = 
+func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] =
   assert( N>=1 )
   let deg  : int     = polyDegree(P)
-  let src  : seq[Fr] = P.coeffs 
+  let src  : seq[Fr] = P.coeffs
   var quot : seq[Fr] = newSeq[Fr]( max(1, deg - N + 1) )
   var rem  : seq[Fr] = newSeq[Fr]( N )
 
   if deg < N:
     rem = src
-  
+
   else:
 
     # compute quotient
@@ -212,7 +212,7 @@ func polyQuotRemByVanishing*(P: Poly, N: int): QuotRem[Poly] =
   return QuotRem[Poly]( quot:Poly(coeffs:quot), rem:Poly(coeffs:rem) )
 
 # divide by the vanishing polynomial `(x^N - 1)`
-func polyDivideByVanishing*(P: Poly, N: int): Poly = 
+func polyDivideByVanishing*(P: Poly, N: int): Poly =
   let qr = polyQuotRemByVanishing(P, N)
   assert( polyIsZero(qr.rem) )
   return qr.quot
@@ -230,7 +230,7 @@ func lagrangePoly(D: Domain, k: int): Poly =
     for i in 0..<N: cs[i] = invN
   else:
     var s : Fr = invN
-    for i in 0..<N: 
+    for i in 0..<N:
       cs[i] = s
       s *= omMinusK
 
@@ -269,48 +269,63 @@ func polyInverseNTT*(ys: seq[Fr], D: Domain): Poly =
 
 #-------------------------------------------------------------------------------
 
-#[
+when isMainModule:
+  proc sanityCheckOneHalf*() =
+    let two    = oneFr + oneFr
+    let invTwo = oneHalfFr
+    echo(toDecimalFr(two))
+    echo(toDecimalFr(invTwo * two))
+    echo(toHex(invTwo))
 
-proc sanityCheckOneHalf*() =
-  let two    = oneFr + oneFr
-  let invTwo = oneHalfFr
-  echo(toDecimalFr(two))
-  echo(toDecimalFr(invTwo * two))
-  echo(toHex(invTwo))
+  proc sanityCheckVanishing*() =
+    var js : seq[int] = toSeq(101..112)
+    let cs : seq[Fr]  = map( js, intToFr )
+    let P  : Poly     = Poly( coeffs:cs )
 
 #-------------------
 
-proc sanityCheckVanishing*() = 
+proc sanityCheckVanishing*() =
   var js : seq[int] = toSeq(101..112)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
 
-  echo("degree of P = ",polyDegree(P))
-  debugPrintFrSeq("xs", P.coeffs)
+    let n  : int = 5
+    let QR = polyQuotRemByVanishing(P, n)
+    let Q  = QR.quot
+    let R  = QR.rem
 
-  let n  : int = 5
-  let QR = polyQuotRemByVanishing(P, n)
-  let Q  = QR.quot
-  let R  = QR.rem
+    debugPrintFrSeq("Q", Q.coeffs)
+    debugPrintFrSeq("R", R.coeffs)
 
-  debugPrintFrSeq("Q", Q.coeffs)
-  debugPrintFrSeq("R", R.coeffs)
+    let Z : Poly = vanishingPoly(n)
+    let S : Poly = Q * Z + R
 
-  let Z : Poly = vanishingPoly(n)
-  let S : Poly = Q * Z + R
+    debugPrintFrSeq("zs", S.coeffs)
+    echo( polyIsEqual(P,S) )
 
-  debugPrintFrSeq("zs", S.coeffs)
-  echo( polyIsEqual(P,S) )
+  proc sanityCheckNTT*() =
+    var js : seq[int] = toSeq(101..108)
+    let cs : seq[Fr]  = map( js, intToFr )
+    let P  : Poly     = Poly( coeffs:cs )
+    let D  : Domain   = createDomain(8)
+    let xs : seq[Fr]  = D.enumerateDomain()
+    let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) )
+    let zs : seq[Fr]  = polyForwardNTT(P ,D)
+    let Q  : Poly     = polyInverseNTT(zs,D)
+    debugPrintFrSeq("xs", xs)
+    debugPrintFrSeq("ys", ys)
+    debugPrintFrSeq("zs", zs)
+    debugPrintFrSeq("us", Q.coeffs)
 
 #-------------------
 
-proc sanityCheckNTT*() = 
+proc sanityCheckNTT*() =
   var js : seq[int] = toSeq(101..108)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
   let D  : Domain   = createDomain(8)
   let xs : seq[Fr]  = D.enumerateDomain()
-  let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) ) 
+  let ys : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(P,x)) )
   let zs : seq[Fr]  = polyForwardNTT(P ,D)
   let Q  : Poly     = polyInverseNTT(zs,D)
   debugPrintFrSeq("xs", xs)
@@ -320,38 +335,36 @@ proc sanityCheckNTT*() =
 
 #-------------------
 
-proc sanityCheckMulFFT*() = 
+proc sanityCheckMulFFT*() =
   var js : seq[int] = toSeq(101..110)
   let cs : seq[Fr]  = map( js, intToFr )
   let P  : Poly     = Poly( coeffs:cs )
 
-  var ks : seq[int] = toSeq(1001..1020)
-  let ds : seq[Fr]  = map( ks, intToFr )
-  let Q  : Poly     = Poly( coeffs:ds )
+    let R1 : Poly = polyMulNaive( P , Q )
+    let R2 : Poly = polyMulFFT(   P , Q )
 
-  let R1 : Poly = polyMulNaive( P , Q )
-  let R2 : Poly = polyMulFFT(   P , Q )
+    # debugPrintFrSeq("naive coeffs", R1.coeffs)
+    # debugPrintFrSeq("fft coeffs",   R2.coeffs)
 
-  # debugPrintFrSeq("naive coeffs", R1.coeffs)
-  # debugPrintFrSeq("fft coeffs",   R2.coeffs)
+    echo( "multiply test = ", polyIsEqual(R1,R2) )
 
   echo( "multiply test = ", polyIsEqual(R1,R2) )
 
 #-------------------
 
-proc sanityCheckLagrangeBases*() = 
+proc sanityCheckLagrangeBases*() =
   let n  = 8
   let D  = createDomain(n)
 
   let L : seq[Poly] = collect( newSeq, (for k in 0..<n: lagrangePoly(D,k) ))
 
   let xs = enumerateDomain(D)
-  let ys0 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[0],x) )) 
-  let ys1 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[1],x) )) 
-  let ys5 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[5],x) )) 
-  let zs0 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(0,i)  )) 
-  let zs1 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(1,i)  )) 
-  let zs5 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(5,i)  )) 
+  let ys0 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[0],x) ))
+  let ys1 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[1],x) ))
+  let ys5 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[5],x) ))
+  let zs0 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(0,i)  ))
+  let zs1 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(1,i)  ))
+  let zs5 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(5,i)  ))
 
   echo("==============")
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys0[i]), " | z[i] = ",toDecimalFr(zs0[i]))
@@ -359,16 +372,16 @@ proc sanityCheckLagrangeBases*() =
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys1[i]), " | z[i] = ",toDecimalFr(zs1[i]))
   echo("--------------")
   for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys5[i]), " | z[i] = ",toDecimalFr(zs5[i]))
- 
+
   let zeta = intToFr(123457)
-  let us : seq[Fr]  = collect( newSeq, (for i in 0..<n: polyEvalAt(L[i],zeta)) ) 
-  let vs : seq[Fr]  = collect( newSeq, (for i in 0..<n: evalLagrangePolyAt(D,i,zeta)) ) 
+  let us : seq[Fr]  = collect( newSeq, (for i in 0..<n: polyEvalAt(L[i],zeta)) )
+  let vs : seq[Fr]  = collect( newSeq, (for i in 0..<n: evalLagrangePolyAt(D,i,zeta)) )
 
   echo("==============")
   for i in 0..<n: echo("i = ",i, " | u[i] = ",toDecimalFr(us[i]), " | v[i] = ",toDecimalFr(vs[i]))
 
   let prefix = "Lagrange basis sanity check = "
-  if ( ys0===zs0 and ys1===zs1 and ys5===zs5 and 
+  if ( ys0===zs0 and ys1===zs1 and ys5===zs5 and
        us===vs ):
     echo( prefix & "OK")
   else:

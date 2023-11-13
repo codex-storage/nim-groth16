@@ -1,12 +1,13 @@
 import pkg/results
 
+import pkg/bn128
 import pkg/groth16
 import pkg/witness
 import pkg/zkey
 import pkg/zkey_types
 import pkg/export_json
 
-export groth16, witness, zkey, zkey_types, export_json
+export groth16, witness, zkey, zkey_types, export_json, bn128
 
 #-------------------------------------------------------------------------------
 

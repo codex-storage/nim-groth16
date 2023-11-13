@@ -17,6 +17,8 @@ import std/sequtils
 import std/streams
 import std/random
 
+import constantine/platforms/abstractions
+
 import constantine/math/arithmetic
 import constantine/math/io/io_fields
 import constantine/math/io/io_bigints
@@ -24,11 +26,12 @@ import constantine/math/config/curves
 import constantine/math/config/type_ff as tff
 
 import constantine/math/extension_fields/towers                 as ext
+import constantine/math/ec_shortweierstrass                     as wst
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff
 import constantine/math/elliptic/ec_shortweierstrass_projective as prj
 import constantine/math/pairings/pairings_bn                    as ate
 import constantine/math/elliptic/ec_scalar_mul                  as scl
-# import constantine/math/elliptic/ec_multi_scalar_mul            as msm
+import constantine/math/elliptic/ec_multi_scalar_mul            as msm
 
 #-------------------------------------------------------------------------------
 
@@ -659,8 +662,7 @@ func `-=`*(p: var G2, q: G2) =    p = addG2(p,negG2(q))
 
 #-------------------------------------------------------------------------------
 
-#[
-func msmG1( coeffs: seq[Fr] , points: seq[G1] ): G1 =
+func msmG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
@@ -675,12 +677,11 @@ func msmG1( coeffs: seq[Fr] , points: seq[G1] ): G1 =
   var r : G1
 
   # [Fp,aff.G1]
-  msm.multiScalarMul_vartime( r,
+  msm.multiScalarMul_vartime( wst.ECP_ShortW[Fp, Subgroup.G1](r),
     toOpenArray(bigcfs, 0, N-1),
     toOpenArray(points, 0, N-1) )
 
   return r
-]#
 
 #-------------------------------------------------------------------------------
 #
@@ -764,8 +765,8 @@ func msmNaiveG2( coeffs: seq[Fr] , points: seq[G2] ): G2 =
 #-------------------------------------------------------------------------------
 
 # TODO: proper MSM implementation (couldn't make constantine work at first...)
-func msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
-  return msmNaiveG1( coeffs, points )
+# func msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
+#   return msmNaiveG1( coeffs, points )
 
 func msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
   return msmNaiveG2( coeffs, points )

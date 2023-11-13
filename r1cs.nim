@@ -6,7 +6,7 @@
 # ===========
 # 
 # standard iden3 binary container format.
-# field elements are in Montgomery representation
+# field elements are in standard representation
 #
 # sections:
 #
@@ -62,22 +62,22 @@ import ./container
 type 
  
   WitnessConfig* = object
-    nWires  : int           # total number of wires (or witness variables), including the constant 1 "variable"
-    nPubOut : int           # number of public outputs
-    nPubIn  : int           # number of public inputs
-    nPrivIn : int           # number of private inputs
-    nLabels : int           # number of labels
+    nWires*  : int           # total number of wires (or witness variables), including the constant 1 "variable"
+    nPubOut* : int           # number of public outputs
+    nPubIn*  : int           # number of public inputs
+    nPrivIn* : int           # number of private inputs
+    nLabels* : int           # number of labels
   
   Term*       = tuple[ wireIdx: int, value: Fr ]
   LinComb*    = seq[Term]
   Constraint* = tuple[ A: LinComb, B: LinComb, C: LinComb ]
 
   R1CS* = object
-    r           : BigInt[256] 
-    cfg         : WitnessConfig
-    nConstr     : int
-    constraints : seq[Constraint]
-    wireToLabel : seq[int]
+    r*           : BigInt[256] 
+    cfg*         : WitnessConfig
+    nConstr*     : int
+    constraints* : seq[Constraint]
+    wireToLabel* : seq[int]
 
 #-------------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ proc parseSection1_header( stream: Stream, user: var R1CS, sectionLen: int ) =
 
 proc loadTerm( stream: Stream ): Term = 
   let idx   = int( stream.readUint32() )
-  let coeff = loadValueFrMont( stream )
+  let coeff = loadValueFrStd( stream )
   return (wireIdx:idx, value:coeff)
 
 proc loadLinComb( stream: Stream ): LinComb = 

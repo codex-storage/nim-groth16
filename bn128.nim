@@ -18,6 +18,7 @@ import std/streams
 import std/random
 
 import constantine/platforms/abstractions
+import constantine/math/isogenies/frobenius
 
 import constantine/math/arithmetic
 import constantine/math/io/io_fields
@@ -31,7 +32,6 @@ import constantine/math/elliptic/ec_shortweierstrass_projective as prj
 import constantine/math/pairings/pairings_bn                    as ate
 import constantine/math/elliptic/ec_scalar_mul                  as scl
 import constantine/math/elliptic/ec_multi_scalar_mul            as msm
-import constantine/math/isogenies/frobenius                     as frb
 
 #-------------------------------------------------------------------------------
 

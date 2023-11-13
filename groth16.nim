@@ -85,7 +85,7 @@ func buildABC( zkey: ZKey, witness: seq[Fr] ): ABC =
       else: raise newException(AssertionDefect, "fatal error")
 
   var valuesC : seq[Fr] = newSeq[Fr](domSize)
-  for i in 0..<hdr.nvars:
+  for i in 0..<domSize:
     valuesC[i] = valuesA[i] * valuesB[i]
 
   return ABC( valuesA:valuesA, valuesB:valuesB, valuesC:valuesC )

@@ -14,9 +14,11 @@ import ./misc
 
 type 
   Domain* = object
-    domainSize*    : int
-    logDomainSize* : int
-    domainGen*     : Fr
+    domainSize*    : int         # `N = 2^n`
+    logDomainSize* : int         # `n = log2(N)`
+    domainGen*     : Fr          # `g`
+    invDomainGen*  : Fr          # `g^-1`
+    invDomainSize* : Fr          # `1/n`
 
 #-------------------------------------------------------------------------------
 
@@ -36,7 +38,12 @@ func createDomain*(size: int): Domain =
   assert(     bool(a == oneFr) , "domain generator sanity check /A" )
   assert( not bool(b == oneFr) , "domain generator sanity check /B" )
 
-  return Domain( domainSize:size, logDomainSize:log2, domainGen:gen )
+  return Domain( domainSize:    size
+               , logDomainSize: log2
+               , domainGen:     gen
+               , invDomainGen:  invFr(gen)
+               , invDomainSize: invFr(intToFr(size)) 
+               )
 
 #-------------------------------------------------------------------------------
 
@@ -49,3 +56,4 @@ func enumerateDomain*(D: Domain): seq[Fr] =
   return xs
 
 #-------------------------------------------------------------------------------
+

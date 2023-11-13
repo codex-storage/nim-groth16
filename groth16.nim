@@ -139,15 +139,15 @@ func computeQuotientPointwise( abc: ABC ): Poly =
   
   # (eta*omega^j)^n - 1 = eta^n - 1 
   # 1 / [ (eta*omega^j)^n - 1] = 1/(eta^n - 1)
-  let eta  = createDomain(2*n).domainGen
-  let Inv1 = invFr( smallPowFr(eta,n) - oneFr )
+  let eta   = createDomain(2*n).domainGen
+  let invZ1 = invFr( smallPowFr(eta,n) - oneFr )
 
   let A1   = shiftEvalDomain( abc.valuesA, D, eta )
   let B1   = shiftEvalDomain( abc.valuesB, D, eta )
   let C1   = shiftEvalDomain( abc.valuesC, D, eta )
 
   var ys : seq[Fr] = newSeq[Fr]( n )
-  for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) * Inv1
+  for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) * invZ1
   let Q1 = polyInverseNTT( ys, D )
 
   let cs = multiplyByPowers( Q1.coeffs, invFr(eta) )
@@ -175,7 +175,7 @@ func computeSnarkjsScalarCoeffs( abc: ABC ): seq[Fr] =
 # the prover
 #
 
-proc generateProof* ( zkey: ZKey, wtns: Witness ): Proof =
+proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
   assert( zkey.header.curve == wtns.curve )
 
   let witness = wtns.values
@@ -194,10 +194,18 @@ proc generateProof* ( zkey: ZKey, wtns: Witness ): Proof =
 
   var abc : ABC = buildABC( zkey, witness )
 
-  # let polyQ1 =  computeQuotientNaive(     abc )
-  # let polyQ2 =  computeQuotientPointwise( abc )
+  var qs : seq[Fr]
+  case zkey.header.flavour
 
-  let qs = computeSnarkjsScalarCoeffs( abc )
+    # the points H are [delta^-1 * tau^i * Z(tau)]
+    of JensGroth:
+      let polyQ = computeQuotientPointwise( abc )
+      qs = polyQ.coeffs
+
+    # the points H are [delta^-1 * L_i(tau*eta) / Z(omega^i*eta)]
+    # where eta^2 = omega and L_i are Lagrange basis polynomials 
+    of Snarkjs:
+      qs = computeSnarkjsScalarCoeffs( abc )
 
   var zs : seq[Fr] = newSeq[Fr]( nvars - npubs - 1 )
   for j in npubs+1..<nvars:
@@ -206,9 +214,6 @@ proc generateProof* ( zkey: ZKey, wtns: Witness ): Proof =
   # masking coeffs
   let r : Fr = randFr()
   let s : Fr = randFr()
-
-  # let r : Fr = intToFr(3)
-  # let s : Fr = intToFr(4)
 
   var pi_a : G1 
   pi_a =  spec.alpha1

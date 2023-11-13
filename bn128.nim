@@ -67,6 +67,9 @@ func pairing* (p: G1, q: G2) : Fp12 =
 const primeP* : B = fromHex( B, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47", bigEndian )
 const primeR* : B = fromHex( B, "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001", bigEndian )
 
+const primeP_254 : BigInt[254] = fromHex( BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47", bigEndian )
+const primeR_254 : BigInt[254] = fromHex( BigInt[254], "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001", bigEndian )
+
 #-------------------------------------------------------------------------------
 
 const zeroFp*  : Fp = fromHex( Fp, "0x00" )
@@ -81,6 +84,11 @@ const infG1*   : G1  = unsafeMkG1( zeroFp  , zeroFp  )
 const infG2*   : G2  = unsafeMkG2( zeroFp2 , zeroFp2 )
 
 #-------------------------------------------------------------------------------
+
+func intToB*(a: uint): B =
+  var y : B
+  y.setUint(a)
+  return y
 
 func intToFp*(a: int): Fp =
   var y : Fp
@@ -97,14 +105,46 @@ func intToFr*(a: int): Fr =
 func isZeroFp*(x: Fp): bool = bool(isZero(x))
 func isZeroFr*(x: Fr): bool = bool(isZero(x))
 
-func isEquaLFp*(x, y: Fp): bool = bool(x == y)
-func isEquaLFr*(x, y: Fr): bool = bool(x == y)
+func isEqualFp*(x, y: Fp): bool = bool(x == y)
+func isEqualFr*(x, y: Fr): bool = bool(x == y)
+
+func `===`*(x, y: Fp): bool = isEqualFp(x,y)
+func `===`*(x, y: Fr): bool = isEqualFr(x,y)
+
+#-------------------
+
+func isEqualFpSeq*(xs, ys: seq[Fp]): bool = 
+  let n = xs.len
+  assert( n == ys.len )
+  var b = true
+  for i in 0..<n: 
+    if not bool(xs[i] == ys[i]):
+      b = false
+      break
+  return b 
+
+func isEqualFrSeq*(xs, ys: seq[Fr]): bool = 
+  let n = xs.len
+  assert( n == ys.len )
+  var b = true
+  for i in 0..<n: 
+    if not bool(xs[i] == ys[i]):
+      b = false
+      break
+  return b 
+
+func `===`*(xs, ys: seq[Fp]): bool = isEqualFpSeq(xs,ys)
+func `===`*(xs, ys: seq[Fr]): bool = isEqualFrSeq(xs,ys)
 
 #-------------------------------------------------------------------------------
 
+#func `+`*(x, y: B ): B  =  ( var z : B  = x ; z += y ; return z )
+func `+`*[n](x, y: BigInt[n] ): BigInt[n] = ( var z : BigInt[n] = x ; z += y ; return z )
 func `+`*(x, y: Fp): Fp =  ( var z : Fp = x ; z += y ; return z )
 func `+`*(x, y: Fr): Fr =  ( var z : Fr = x ; z += y ; return z )
  
+#func `-`*(x, y: B ): B  =  ( var z : B  = x ; z -= y ; return z )
+func `-`*[n](x, y: BigInt[n] ): BigInt[n] = ( var z : BigInt[n] = x ; z -= y ; return z )
 func `-`*(x, y: Fp): Fp =  ( var z : Fp = x ; z -= y ; return z )
 func `-`*(x, y: Fr): Fr =  ( var z : Fr = x ; z -= y ; return z )
 
@@ -139,6 +179,11 @@ func smallPowFr*(base: Fr, expo: int): Fr =
 
 #-------------------------------------------------------------------------------
 
+func deltaFr*(i, j: int) : Fr =
+  return (if (i == j): oneFr else: zeroFr)
+
+#-------------------------------------------------------------------------------
+
 func toDecimalBig*[n](a : BigInt[n]): string =
   var s : string = toDecimal(a)
   s = s.strip( leading=true, trailing=false, chars={'0'} )
@@ -156,6 +201,22 @@ func toDecimalFr*(a : Fr): string =
   s = s.strip( leading=true, trailing=false, chars={'0'} )
   if s.len == 0: s="0"
   return s
+
+#---------------------------------------
+
+const k65536 : BigInt[254] = fromHex( BigInt[254], "0x10000", bigEndian )
+
+func signedToDecimalFp*(a : Fp): string =
+  if bool( a.toBig() > primeP_254 - k65536 ):
+    return "-" & toDecimalFp(negFp(a))
+  else:
+    return toDecimalFp(a)
+
+func signedToDecimalFr*(a : Fr): string =
+  if bool( a.toBig() > primeR_254 - k65536 ):
+    return "-" & toDecimalFr(negFr(a))
+  else:
+    return toDecimalFr(a)
 
 #-------------------------------------------------------------------------------
 
@@ -332,6 +393,23 @@ func mkG2( x, y: Fp2 ) : G2 =
   else:
     assert( checkCurveEqG2(x,y) , "mkG2: not a G2 curve point" )
     return unsafeMkG2(x,y)
+
+#-------------------------------------------------------------------------------
+# group generators
+
+const gen1_x  : Fp = fromHex(Fp, "0x01")
+const gen1_y  : Fp = fromHex(Fp, "0x02")
+
+const gen2_xi : Fp = fromHex(Fp, "0x1adcd0ed10df9cb87040f46655e3808f98aa68a570acf5b0bde23fab1f149701")
+const gen2_xu : Fp = fromHex(Fp, "0x09e847e9f05a6082c3cd2a1d0a3a82e6fbfbe620f7f31269fa15d21c1c13b23b")
+const gen2_yi : Fp = fromHex(Fp, "0x056c01168a5319461f7ca7aa19d4fcfd1c7cdf52dbfc4cbee6f915250b7f6fc8")
+const gen2_yu : Fp = fromHex(Fp, "0x0efe500a2d02dd77f5f401329f30895df553b878fc3c0dadaaa86456a623235c")
+
+const gen2_x  : Fp2 = mkFp2( gen2_xi, gen2_xu )
+const gen2_y  : Fp2 = mkFp2( gen2_yi, gen2_yu )
+
+const gen1* : G1 = unsafeMkG1( gen1_x, gen1_y )
+const gen2* : G2 = unsafeMkG2( gen2_x, gen2_y )
 
 #-------------------------------------------------------------------------------
 
@@ -625,6 +703,24 @@ func `**`*( coeff: Fr , point: G2 ) : G2 =
   prj.affine( r, q )
   return r
 
+#-------------------
+
+func `**`*( coeff: BigInt , point: G1 ) : G1 = 
+  var q : ProjG1 
+  prj.fromAffine( q , point )
+  scl.scalarMul(  q , coeff )
+  var r : G1
+  prj.affine( r, q )
+  return r
+
+func `**`*( coeff: BigInt , point: G2 ) : G2 = 
+  var q : ProjG2
+  prj.fromAffine( q , point )
+  scl.scalarMul(  q , coeff )
+  var r : G2
+  prj.affine( r, q )
+  return r
+
 #-------------------------------------------------------------------------------
 
 func msmNaiveG1( coeffs: seq[Fr] , points: seq[G1] ): G1 = 
@@ -673,5 +769,13 @@ func msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
 
 func msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 = 
   return msmNaiveG2( coeffs, points )
+
+#-------------------------------------------------------------------------------
+
+proc sanityCheckGroupGen*() = 
+  echo( "gen1 on the curve  = ", checkCurveEqG1(gen1.x,gen1.y) )
+  echo( "gen2 on the curve  = ", checkCurveEqG2(gen2.x,gen2.y) )
+  echo( "order of gen1 is R = ", (not bool(isInf(gen1))) and bool(isInf(primeR ** gen1)) )
+  echo( "order of gen2 is R = ", (not bool(isInf(gen2))) and bool(isInf(primeR ** gen2)) )
 
 #-------------------------------------------------------------------------------

@@ -5,8 +5,6 @@
 # constantine's implementation is "somewhat lacking", so we have to
 # implement these ourselves...
 #
-# TODO: more efficient implementations (right now I just want something working)
-#
 
 import std/sequtils
 import std/sugar
@@ -143,6 +141,7 @@ func polyMulFFT*(P, Q: Poly): Poly =
 
 #-------------------------------------------------------------------------------
 
+# WARNING: this is using the naive implementation!
 func polyMul*(P, Q : Poly): Poly =
   # return polyMulFFT(P, Q)   
   return polyMulNaive(P, Q)   
@@ -171,6 +170,9 @@ func generalizedVanishingPoly*(N: int, a: Fr, b: Fr): Poly =
 # the vanishing polynomial `(x^N - 1)`
 func vanishingPoly*(N: int): Poly = 
   return generalizedVanishingPoly(N, oneFr, oneFr)
+
+func vanishingPoly*(D: Domain): Poly = 
+  return vanishingPoly(D.domainSize)
 
 #-------------------------------------------------------------------------------
 
@@ -217,6 +219,38 @@ func polyDivideByVanishing*(P: Poly, N: int): Poly =
 
 #-------------------------------------------------------------------------------
 
+# Lagrange basis polynomials
+func lagrangePoly(D: Domain, k: int): Poly =
+  let N             = D.domainSize
+  let omMinusK : Fr = smallPowFr( D.invDomainGen , k )
+  let invN     : Fr = invFr(intToFr(N))
+
+  var cs : seq[Fr]  = newSeq[Fr]( N )
+  if k == 0:
+    for i in 0..<N: cs[i] = invN
+  else:
+    var s : Fr = invN
+    for i in 0..<N: 
+      cs[i] = s
+      s *= omMinusK
+
+  return Poly(coeffs: cs)
+
+#---------------------------------------
+
+# evaluate a Lagrange basis polynomial at a given point `zeta` (outside the domain)
+func evalLagrangePolyAt*(D: Domain, k: int, zeta: Fr): Fr =
+  let omegaK = smallPowFr(D.domainGen, k)
+  let denom  = (zeta - omegaK)
+  if bool(isZero(denom)):
+    # we are inside the domain
+    raise newException(AssertionDefect, "point should be outside the domain")
+  else:
+    # we are outside the domain
+    return omegaK * (smallPowFr(zeta, D.domainSize) - oneFr) * D.invDomainSize * invFr(denom)
+
+#-------------------------------------------------------------------------------
+
 # evaluates a polynomial on an FFT domain
 func polyForwardNTT*(P: Poly, D: Domain): seq[Fr] =
   let n = P.coeffs.len
@@ -244,6 +278,8 @@ proc sanityCheckOneHalf*() =
   echo(toDecimalFr(invTwo * two))
   echo(toHex(invTwo))
 
+#-------------------
+
 proc sanityCheckVanishing*() = 
   var js : seq[int] = toSeq(101..112)
   let cs : seq[Fr]  = map( js, intToFr )
@@ -266,6 +302,8 @@ proc sanityCheckVanishing*() =
   debugPrintFrSeq("zs", S.coeffs)
   echo( polyIsEqual(P,S) )
 
+#-------------------
+
 proc sanityCheckNTT*() = 
   var js : seq[int] = toSeq(101..108)
   let cs : seq[Fr]  = map( js, intToFr )
@@ -279,6 +317,8 @@ proc sanityCheckNTT*() =
   debugPrintFrSeq("ys", ys)
   debugPrintFrSeq("zs", zs)
   debugPrintFrSeq("us", Q.coeffs)
+
+#-------------------
 
 proc sanityCheckMulFFT*() = 
   var js : seq[int] = toSeq(101..110)
@@ -296,6 +336,43 @@ proc sanityCheckMulFFT*() =
   # debugPrintFrSeq("fft coeffs",   R2.coeffs)
 
   echo( "multiply test = ", polyIsEqual(R1,R2) )
+
+#-------------------
+
+proc sanityCheckLagrangeBases*() = 
+  let n  = 8
+  let D  = createDomain(n)
+
+  let L : seq[Poly] = collect( newSeq, (for k in 0..<n: lagrangePoly(D,k) ))
+
+  let xs = enumerateDomain(D)
+  let ys0 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[0],x) )) 
+  let ys1 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[1],x) )) 
+  let ys5 : seq[Fr]  = collect( newSeq, (for x in xs: polyEvalAt(L[5],x) )) 
+  let zs0 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(0,i)  )) 
+  let zs1 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(1,i)  )) 
+  let zs5 : seq[Fr]  = collect( newSeq, (for i in 0..<n: deltaFr(5,i)  )) 
+
+  echo("==============")
+  for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys0[i]), " | z[i] = ",toDecimalFr(zs0[i]))
+  echo("--------------")
+  for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys1[i]), " | z[i] = ",toDecimalFr(zs1[i]))
+  echo("--------------")
+  for i in 0..<n: echo("i = ",i, " | y[i] = ",toDecimalFr(ys5[i]), " | z[i] = ",toDecimalFr(zs5[i]))
+ 
+  let zeta = intToFr(123457)
+  let us : seq[Fr]  = collect( newSeq, (for i in 0..<n: polyEvalAt(L[i],zeta)) ) 
+  let vs : seq[Fr]  = collect( newSeq, (for i in 0..<n: evalLagrangePolyAt(D,i,zeta)) ) 
+
+  echo("==============")
+  for i in 0..<n: echo("i = ",i, " | u[i] = ",toDecimalFr(us[i]), " | v[i] = ",toDecimalFr(vs[i]))
+
+  let prefix = "Lagrange basis sanity check = "
+  if ( ys0===zs0 and ys1===zs1 and ys5===zs5 and 
+       us===vs ):
+    echo( prefix & "OK")
+  else:
+    echo( prefix & "FAILED")
 
 ]#
 

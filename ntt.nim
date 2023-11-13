@@ -70,6 +70,7 @@ func forwardNTT*(src: seq[Fr], D: Domain): seq[Fr] =
   return tgt
 
 # pads the input with zeros to get a pwoer of two size
+# TODO: optimize the FFT so that it doesn't do the multiplications with zeros 
 func extendAndForwardNTT*(src: seq[Fr], D: Domain): seq[Fr] =
   let n = src.len
   let N = D.domainSize 
@@ -97,6 +98,7 @@ func inverseNTT_worker( m: int
     of 0: 
       tgt[tgtOfs] = src[srcOfs]
   
+    # TODO: faster division by 2
     of 1:
       tgt[tgtOfs          ] = ( src[srcOfs] + src[srcOfs+1] ) * oneHalfFr
       tgt[tgtOfs+tgtStride] = ( src[srcOfs] - src[srcOfs+1] ) * oneHalfFr
@@ -107,6 +109,7 @@ func inverseNTT_worker( m: int
       let ginv  : Fr = invFr(gen)
       var gpow  : Fr = oneHalfFr
 
+      # TODO: precalculate the gpow vector for repeated iNTT-s ?
       for j in 0..<halfN:
         buf[bufOfs+j      ] = ( src[srcOfs+j] + src[srcOfs+j+halfN] ) * oneHalfFr
         buf[bufOfs+j+halfN] = ( src[srcOfs+j] - src[srcOfs+j+halfN] ) * gpow

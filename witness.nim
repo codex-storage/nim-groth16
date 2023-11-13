@@ -11,9 +11,9 @@
 #
 #     nvars = 1 + pub + secret = 1 + npubout + npubin + nprivin + nsecret
 #
-# WARNING! unlike the `.r1cs` and `.zkey` files, which encode field elements
-# in Montgomery representation, the `.wtns` file encode field elements in 
-# the standard representation!!
+# NOTE: Unlike the `.zkey` files, which encode field elements in the 
+# Montgomery representation, the `.wtns` file encode field elements in 
+# the standard representation!
 #
 
 import std/streams

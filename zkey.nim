@@ -7,8 +7,10 @@
 # ===========
 # 
 # standard iden3 binary container format.
-# field elements are in Montgomery representation
-#
+# field elements are in Montgomery representation, except for the coefficients
+# which for some reason are double Montgomery encoded... (and unlike the 
+# `.wtns` and `.r1cs` files which use the standard representation)
+# 
 # sections:
 #
 # 1: Header
@@ -52,7 +54,7 @@
 #   compute (C*witness)[i] = (A*witness)[i] * (B*witness)[i]
 #   These 3 column vectors is all we need in the proof generation.
 #
-#   WARNING! It appears that the values here are *doubly Montgomery encoded* (?!)
+#   WARNING! It appears that the values here are *doubly Montgomery encoded* (??!)
 #
 # 5: PointsA
 # ----------
@@ -76,8 +78,10 @@
 #
 # 9: PointsH
 # ----------
-#   what normally should be the curve points [delta^-1 * tau^i * Z(tau)]
-#   HOWEVER, they are NOT! (??)
+#   what normally should be the curve points `[ delta^-1 * tau^i * Z(tau) ]_1`
+#   HOWEVER, in the snarkjs implementation, they are different; namely
+#   `[ delta^-1 * L_{2i+1} (tau) ]_1` where L_k are Lagrange polynomials
+#   on the refined (double sized) domain 
 #   See <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #   length = 2 * n8p * domSize = domSize G1 points
 #
@@ -121,6 +125,8 @@ proc parseSection2_GrothHeader( stream: Stream, user: var ZKey, sectionLen: int 
   var header : GrothHeader
   header.p = p
   header.r = r
+
+  header.flavour = Snarkjs
 
   assert( n8p == 32 , "expecting 256 bit primes")     
   assert( n8r == 32 , "expecting 256 bit primes")     

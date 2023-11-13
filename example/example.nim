@@ -1,11 +1,16 @@
-import pkg/groth16
 
-import ../tests/test_proof
-import ../src/export_json
+import pkg/results
+import ../groth16
 
-let zkey_fname : string = "./build/product.zkey"
-let wtns_fname : string = "./build/product.wtns"
-let proof = testProveAndVerify( zkey_fname, wtns_fname)
+proc main(): Result[void, cstring] =
+  let zkey_fname : string = "./build/product.zkey"
+  let wtns_fname : string = "./build/product.wtns"
+  let proof = ? proveAndVerify( zkey_fname, wtns_fname)
 
-exportPublicIO( "./build/nim_public.json" , proof )
-exportProof(    "./build/nim_proof.json"  , proof )
+  exportPublicIO( "./build/nim_public.json" , proof )
+  exportProof(    "./build/nim_proof.json"  , proof )
+
+  ok()
+
+if main().isErr:
+  raiseAssert "Error verifying proof"

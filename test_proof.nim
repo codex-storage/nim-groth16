@@ -1,4 +1,7 @@
 
+
+import std/[times, os]
+
 import ./groth16
 import ./witness
 import ./r1cs
@@ -18,7 +21,11 @@ proc testProveAndVerify*( zkey_fname, wtns_fname: string): Proof =
 
   echo("generating proof...")
   let vkey  = extractVKey( zkey)
+
+  let start = cpuTime()
   let proof = generateProof( zkey, witness )
+  let elapsed = cpuTime() - start
+  echo("proving took ",elapsed)
 
   echo("verifying the proof...")
   let ok = verifyProof( vkey, proof )
@@ -42,7 +49,11 @@ proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): 
 
   echo("generating proof...")
   let vkey  = extractVKey( zkey)
+
+  let start = cpuTime()
   let proof = generateProof( zkey, witness )
+  let elapsed = cpuTime() - start
+  echo("proving took ",elapsed)
 
   echo("verifying the proof...")
   let ok = verifyProof( vkey, proof )

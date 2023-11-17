@@ -9,8 +9,8 @@ import constantine/math/io/io_bigints
 import constantine/math/config/curves
 import constantine/math/config/type_ff as tff except Fp, Fp2, Fr
 
-import ./fields
-import ./curves
+import groth16/bn128/fields
+import groth16/bn128/curves
 
 #-------------------------------------------------------------------------------
 

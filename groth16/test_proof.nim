@@ -2,12 +2,13 @@
 
 import std/[times, os]
 
-import ./groth16
-import ./witness
-import ./r1cs
-import ./zkey
-import ./zkey_types
-import ./fake_setup
+import groth16/prover
+import groth16/verifier
+import groth16/files/witness
+import groth16/files/r1cs
+import groth16/files/zkey
+import groth16/zkey_types
+import groth16/fake_setup
 
 #-------------------------------------------------------------------------------
 
@@ -17,18 +18,15 @@ proc testProveAndVerify*( zkey_fname, wtns_fname: string): Proof =
   let witness = parseWitness( wtns_fname)
   let zkey    = parseZKey( zkey_fname)
 
-  # printCoeffs(zkey.coeffs)
-
   echo("generating proof...")
-  let vkey  = extractVKey( zkey)
-
   let start = cpuTime()
   let proof = generateProof( zkey, witness )
   let elapsed = cpuTime() - start
   echo("proving took ",elapsed)
 
   echo("verifying the proof...")
-  let ok = verifyProof( vkey, proof )
+  let vkey = extractVKey( zkey)
+  let ok   = verifyProof( vkey, proof )
   echo("verification succeeded = ",ok)
 
   return proof

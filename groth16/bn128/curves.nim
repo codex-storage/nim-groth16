@@ -26,7 +26,7 @@ import constantine/math/elliptic/ec_shortweierstrass_projective as prj
 import constantine/math/pairings/pairings_bn                    as ate 
 import constantine/math/elliptic/ec_scalar_mul                  as scl 
 
-import ./fields
+import groth16/bn128/fields
 
 #-------------------------------------------------------------------------------
 

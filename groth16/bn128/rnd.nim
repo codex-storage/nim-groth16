@@ -7,7 +7,7 @@ import constantine/math/arithmetic       except Fp, Fp2, Fr
 import constantine/math/io/io_fields     except Fp, Fp2, Fr
 import constantine/math/io/io_bigints
 
-import ./fields
+import groth16/bn128/fields
 
 #-------------------------------------------------------------------------------
 # random values

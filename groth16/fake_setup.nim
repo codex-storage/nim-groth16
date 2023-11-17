@@ -7,16 +7,15 @@
 # 
 
 import sugar
-import std/sequtils
 
 import constantine/math/arithmetic except Fp, Fr
 
-import bn128
-import domain
-import poly
-import zkey_types
-import r1cs
-import misc
+import groth16/bn128
+import groth16/math/domain
+import groth16/math/poly
+import groth16/zkey_types
+import groth16/files/r1cs
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 
@@ -34,11 +33,12 @@ proc randomToxicWaste(): ToxicWaste =
   let c = randFr()
   let d = randFr()
   let t = randFr()
-  return ToxicWaste( alpha: a
-                   , beta:  b
-                   , gamma: c
-                   , delta: d
-                   , tau:   t )
+  return 
+    ToxicWaste( alpha: a
+              , beta:  b
+              , gamma: c
+              , delta: d
+              , tau:   t )
 
 #-------------------------------------------------------------------------------
 
@@ -144,24 +144,26 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
   # echo("neqs   = ",neqs)
   # echo("domain = ",domSize)
 
-  let header = GrothHeader( curve:   "bn128"
-                          , flavour: flavour
-                          , p:       primeP
-                          , r:       primeR
-                          , nvars:   nvars
-                          , npubs:   npubs
-                          , domainSize:    domSize
-                          , logDomainSize: logDomSize
-                          )
+  let header = 
+        GrothHeader( curve:   "bn128"
+                   , flavour: flavour
+                   , p:       primeP
+                   , r:       primeR
+                   , nvars:   nvars
+                   , npubs:   npubs
+                   , domainSize:    domSize
+                   , logDomainSize: logDomSize
+                   )
 
-  let spec = SpecPoints( alpha1    : toxic.alpha ** gen1
-                       , beta1     : toxic.beta  ** gen1
-                       , beta2     : toxic.beta  ** gen2
-                       , gamma2    : toxic.gamma ** gen2
-                       , delta1    : toxic.delta ** gen1
-                       , delta2    : toxic.delta ** gen2
-                       , alphaBeta : pairing( toxic.alpha ** gen1 , toxic.beta ** gen2 )  
-                       )
+  let spec = 
+        SpecPoints( alpha1    : toxic.alpha ** gen1
+                  , beta1     : toxic.beta  ** gen1
+                  , beta2     : toxic.beta  ** gen2
+                  , gamma2    : toxic.gamma ** gen2
+                  , delta1    : toxic.delta ** gen1
+                  , delta2    : toxic.delta ** gen2
+                  , alphaBeta : pairing( toxic.alpha ** gen1 , toxic.beta ** gen2 )  
+                  )
 
   let matrices = r1csToMatrices(r1cs)
   let coeffs   = r1csToCoeffs( r1cs )
@@ -193,37 +195,43 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
   var pointsH : seq[G1]
   case flavour 
     
+    #---------------------------------------------------------------------------
     # in the original paper, these are the curve points
     #   [ delta^-1 * tau^i * Z(tau) ] 
+    #
     of JensGroth:
       pointsH = collect( newSeq , (for i in 0..<domSize: 
         (deltaInv * smallPowFr(toxic.tau,i)) ** ztauG1 ))
 
+    #---------------------------------------------------------------------------
     # in the Snarkjs implementation, these are the curve points
     #   [ delta^-1 * L_{2i+1} (tau) ]
     # where L_k are the Lagrange polynomials on the refined domain
+    #
     of Snarkjs:
       let D2  : Domain = createDomain(2*domSize)
-      let eta : Fr     = D2.domainGen
-
       pointsH = collect( newSeq , (for i in 0..<domSize: 
         (deltaInv * evalLagrangePolyAt(D2, 2*i+1, toxic.tau)) ** gen1 ))
 
+    #---------------------------------------------------------------------------
+
   let vPoints = VerifierPoints( pointsIC: pointsL )
 
-  let pPoints = ProverPoints( pointsA1: pointsA
-                            , pointsB1: pointsB1 
-                            , pointsB2: pointsB2 
-                            , pointsC1: pointsK
-                            , pointsH1: pointsH 
-                            )
+  let pPoints = 
+        ProverPoints( pointsA1: pointsA
+                    , pointsB1: pointsB1 
+                    , pointsB2: pointsB2 
+                    , pointsC1: pointsK
+                    , pointsH1: pointsH 
+                    )
 
-  return ZKey( header:     header
-             , specPoints: spec
-             , vPoints:    vPoints
-             , pPoints:    pPoints
-             , coeffs:     coeffs
-             )
+  return 
+    ZKey( header:     header
+        , specPoints: spec
+        , vPoints:    vPoints
+        , pPoints:    pPoints
+        , coeffs:     coeffs
+        )
     
 #-------------------------------------------------------------------------------
 

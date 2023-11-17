@@ -10,12 +10,12 @@ import std/sequtils
 import std/sugar
 
 import constantine/math/arithmetic except Fp,Fr
-import constantine/math/io/io_fields
+#import constantine/math/io/io_fields
 
-import bn128
-import domain
-import ntt
-import misc
+import groth16/bn128
+import groth16/math/domain
+import groth16/math/ntt
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 
@@ -220,7 +220,7 @@ func polyDivideByVanishing*(P: Poly, N: int): Poly =
 #-------------------------------------------------------------------------------
 
 # Lagrange basis polynomials
-func lagrangePoly(D: Domain, k: int): Poly =
+func lagrangePoly*(D: Domain, k: int): Poly =
   let N             = D.domainSize
   let omMinusK : Fr = smallPowFr( D.invDomainGen , k )
   let invN     : Fr = invFr(intToFr(N))

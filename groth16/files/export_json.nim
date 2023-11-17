@@ -6,8 +6,8 @@
 import constantine/math/arithmetic   except Fp, Fr
 #import constantine/math/io/io_fields except Fp, Fr
 
-import bn128
-from ./groth16 import Proof
+import groth16/bn128
+from groth16/prover import Proof
 
 #-------------------------------------------------------------------------------
 

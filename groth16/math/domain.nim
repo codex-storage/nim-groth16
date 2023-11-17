@@ -7,8 +7,8 @@ import constantine/math/arithmetic   except Fp,Fr
 import constantine/math/io/io_fields except Fp,Fr
 #import constantine/math/io/io_bigints
 
-import ./bn128
-import ./misc
+import groth16/bn128
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 

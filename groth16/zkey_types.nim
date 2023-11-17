@@ -1,7 +1,7 @@
 
 import constantine/math/arithmetic except Fp, Fr
 
-import ./bn128
+import groth16/bn128
 
 #-------------------------------------------------------------------------------
 
@@ -80,14 +80,14 @@ func matrixSelToString(sel: MatrixSel): string =
     of MatrixB: return "B"
     of MatrixC: return "C"
 
-proc printCoeff(cf: Coeff) = 
+proc debugPrintCoeff(cf: Coeff) = 
   echo(    "matrix=", matrixSelToString(cf.matrix)
       , " | i=", cf.row
       , " | j=", cf.col
       , " | val=", signedToDecimalFr(cf.coeff)
       )
 
-proc printCoeffs*(cfs: seq[Coeff]) = 
-  for cf in cfs: printCoeff(cf)
+proc debugPrintCoeffs*(cfs: seq[Coeff]) = 
+  for cf in cfs: debugPrintCoeff(cf)
 
 #-------------------------------------------------------------------------------

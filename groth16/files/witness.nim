@@ -21,8 +21,8 @@ import std/streams
 import constantine/math/arithmetic except Fp, Fr
 import constantine/math/io/io_bigints
 
-import ./bn128
-import ./container
+import groth16/bn128
+import groth16/files/container
 
 #-------------------------------------------------------------------------------
 

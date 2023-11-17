@@ -97,10 +97,10 @@ import std/streams
 import constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_bigints
  
-import ./bn128
-import ./zkey_types
-import ./container
-import ./misc
+import groth16/bn128
+import groth16/zkey_types
+import groth16/files/container
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 

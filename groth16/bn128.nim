@@ -11,12 +11,12 @@
 
 #-------------------------------------------------------------------------------
 
-import ./bn128/fields
-import ./bn128/curves
-import ./bn128/msm
-import ./bn128/io
-import ./bn128/rnd
-import ./bn128/debug
+import groth16/bn128/fields
+import groth16/bn128/curves
+import groth16/bn128/msm
+import groth16/bn128/io
+import groth16/bn128/rnd
+import groth16/bn128/debug
 
 #-------------------
 

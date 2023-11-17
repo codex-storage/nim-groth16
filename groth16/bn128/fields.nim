@@ -46,6 +46,9 @@ const oneFr*   : Fr = fromHex( Fr, "0x01" )
 const zeroFp2* : Fp2 = mkFp2( zeroFp, zeroFp )
 const oneFp2*  : Fp2 = mkFp2( oneFp , zeroFp )
 
+const minusOneFp* : Fp = fromHex( Fp, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46" )
+const minusOneFr* : Fr = fromHex( Fr, "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000" )
+
 #-------------------------------------------------------------------------------
 
 func intToB*(a: uint): B =

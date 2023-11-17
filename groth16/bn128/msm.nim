@@ -5,6 +5,8 @@
 
 import system
 
+# import constantine/curves_primitives except Fp, Fp2, Fr
+ 
 import constantine/platforms/abstractions   except Subgroup
 import constantine/math/isogenies/frobenius except Subgroup
 
@@ -20,8 +22,8 @@ import constantine/math/elliptic/ec_shortweierstrass_projective as prj except Su
 import constantine/math/elliptic/ec_scalar_mul                  as scl except Subgroup
 import constantine/math/elliptic/ec_multi_scalar_mul            as msm except Subgroup
 
-import ./fields
-import ./curves
+import groth16/bn128/fields
+import groth16/bn128/curves
 
 #-------------------------------------------------------------------------------
 

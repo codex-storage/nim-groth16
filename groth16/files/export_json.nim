@@ -33,6 +33,8 @@ proc exportPublicIO*( fpath: string, prf: Proof ) =
   let f = open(fpath, fmWrite)
   defer: f.close()
 
+  # note: we start from 1 because the 0th element is the constant 1 "variable", 
+  # which is automatically added by the tools
   for i in 1..<n:
     let str : string = toQuotedDecimalFr( prf.publicIO[i] )
     if i==1:

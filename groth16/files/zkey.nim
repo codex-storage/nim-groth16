@@ -31,7 +31,7 @@
 #   beta2   : G2        = [beta]_2
 #   gamma2  : G2        = [gamma]_2
 #   delta1  : G1        = [delta]_1
-#   delta2  : G2        = [delta_2]
+#   delta2  : G2        = [delta]_2
 #
 # 3: IC
 # -----

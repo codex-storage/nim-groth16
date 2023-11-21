@@ -8,7 +8,7 @@ mkdir -p build
 
 # --- compile the circom code ---
 cd ${ORIG}
-circom --r1cs --wasm -o build ${NAME}.circom
+circom --r1cs --wasm --c -o build ${NAME}.circom
 
 # --- download powers-of-tau ceremony, if necessary ---
 cd ${ORIG}/build
@@ -25,9 +25,9 @@ PTAU_FILE="`pwd`/${PTAU_FILE}"
 cd ${ORIG}/build
 snarkjs groth16 setup ${NAME}.r1cs $PTAU_FILE ${NAME}_0000.zkey
 echo "foobar entropy" | \
-snarkjs zkey contribute ${NAME}_0000.zkey ${NAME}_0001.zkey --name="1st Contributor Name" -v
+  snarkjs zkey contribute ${NAME}_0000.zkey ${NAME}_0001.zkey --name="1st Contributor Name" -v
 echo "baz entropy" | \
-snarkjs zkey contribute ${NAME}_0001.zkey ${NAME}_0002.zkey --name="2nd Contributor Name" -v
+  snarkjs zkey contribute ${NAME}_0001.zkey ${NAME}_0002.zkey --name="2nd Contributor Name" -v
 rm ${NAME}_0000.zkey
 rm ${NAME}_0001.zkey
 mv ${NAME}_0002.zkey ${NAME}.zkey

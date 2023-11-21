@@ -12,7 +12,7 @@
 
 #define NMUTEXES 12 //512
 
-namespace CIRCUIT_NAME {
+// namespace CIRCUIT_NAME {
 
 u64 fnv1a(std::string s);
 
@@ -68,6 +68,6 @@ private:
 
 typedef void (*Circom_TemplateFunction)(uint __cIdx, Circom_CalcWit* __ctx); 
 
-} //namespace
+// } //namespace
 
 #endif // CIRCOM_CALCWIT_H

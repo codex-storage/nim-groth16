@@ -6,7 +6,7 @@
 #include <sstream>
 #include <memory>
 
-namespace CIRCUIT_NAME {
+// namespace CIRCUIT_NAME {
 
 using json = nlohmann::json;
 
@@ -75,6 +75,14 @@ Circom_Circuit* loadCircuit(const void *buffer, unsigned long buffer_size) {
     return circuit;
 }
 
+#ifndef WITNESS_CALC_JSON_INTERNAL
+
+extern bool check_valid_number(std::string & s, uint base);
+
+extern void json2FrElements (json val, std::vector<FrElement> & vval);
+
+#else
+
 bool check_valid_number(std::string & s, uint base){
   bool is_valid = true;
   if (base == 16){
@@ -136,6 +144,7 @@ void json2FrElements (json val, std::vector<FrElement> & vval){
     }
   }
 }
+#endif
 
 void loadJson(Circom_CalcWit *ctx, const char *json_buffer, unsigned long buffer_size) {
 
@@ -306,4 +315,4 @@ int witnesscalc(
     return WITNESSCALC_OK;
 }
 
-} // namespace
+// } // namespace

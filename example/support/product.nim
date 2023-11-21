@@ -13,6 +13,8 @@ else:
 {.compile: "fr.cpp".}
 {.compile: "calcwit.cpp".}
 {.compile: "witnesscalc.cpp".}
-{.compile: "circuits_incl.cpp".}
-# {.compile: "product.cpp".}
-{.compile: "main.cpp".}
+
+# {.compile: "main.cpp".}
+
+{.compile: "../build/product_cpp/product.cpp".}
+{.compile: "../build/product_cpp/main.cpp".}

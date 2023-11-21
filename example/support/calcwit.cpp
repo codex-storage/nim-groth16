@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "calcwit.hpp"
 
-namespace CIRCUIT_NAME {
+// namespace CIRCUIT_NAME {
 
 extern void run(Circom_CalcWit* ctx);
 
@@ -126,4 +126,4 @@ std::string Circom_CalcWit::generate_position_array(uint* dimensions, uint size_
   return positions;
 }
 
-} //namespace
+// } //namespace

@@ -14,7 +14,5 @@ else:
 {.compile: "calcwit.cpp".}
 {.compile: "witnesscalc.cpp".}
 
-# {.compile: "main.cpp".}
-
 {.compile: "../build/product_cpp/product.cpp".}
 {.compile: "../build/product_cpp/main.cpp".}

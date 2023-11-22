@@ -44,7 +44,9 @@ echo '{ "inp": [7,11,13] , "plus": 1022 }' >build/${NAME}_input.json
 # cd $ORIG/build/${NAME}_js
 # node generate_witness.js ${NAME}.wasm ../${NAME}_input.json ../${NAME}.wtns
 # cd $ORIG/build
-cd $ORIG/circom_build/
+cp -v $ORIG/circom_build/* $ORIG/build/${NAME}_cpp/
+cd $ORIG/build/${NAME}_cpp
+echo "{.compile: \"${NAME}\"}" > ${NAME}.nim
 nim cpp ${NAME}.nim
 ./${NAME} ../${NAME}_input.json ../${NAME}.wtns
 cd $ORIG/build

@@ -32,7 +32,7 @@ proc randomToxicWaste(): ToxicWaste =
   let b = randFr()
   let c = randFr()
   let d = randFr()
-  let t = randFr()
+  let t = randFr()  # intToFr(106)   
   return 
     ToxicWaste( alpha: a
               , beta:  b
@@ -129,6 +129,16 @@ func matricesToCoeffs*(matrices: Matrices): seq[Coeff] =
 
 #-------------------------------------------------------------------------------
 
+func dotProdFr(xs, ys: seq[Fr]): Fr = 
+  let n = xs.len
+  assert( n == ys.len, "dotProdFr: incompatible vector lengths" )
+  var s : Fr = zeroFr
+  for i in 0..<n:
+    s += xs[i] * ys[i]
+  return s
+
+#-------------------------------------------------------------------------------
+
 func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey = 
  
   let neqs       = r1cs.constraints.len
@@ -171,6 +181,9 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
 
   let D : Domain = createDomain(domSize) 
 
+#[
+  # this approach is very inefficient
+
   let polyAs : seq[Poly] = collect( newSeq , (for col in matrices.A: polyInverseNTT(col, D) ))
   let polyBs : seq[Poly] = collect( newSeq , (for col in matrices.B: polyInverseNTT(col, D) ))
   let polyCs : seq[Poly] = collect( newSeq , (for col in matrices.C: polyInverseNTT(col, D) ))
@@ -179,6 +192,20 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
   let pointsB1 : seq[G1] = collect( newSeq , (for p in polyBs: polyEvalAt(p, toxic.tau) ** gen1) )
   let pointsB2 : seq[G2] = collect( newSeq , (for p in polyBs: polyEvalAt(p, toxic.tau) ** gen2) )
   let pointsC  : seq[G1] = collect( newSeq , (for p in polyCs: polyEvalAt(p, toxic.tau) ** gen1) )
+]#
+
+  # the Lagrange polynomials L_k(x) evaluated at x=tau
+  # we can then simply take the dot product of these with the column vectors to compute the points A,B1,B2,C
+  let lagrangeTaus : seq[Fr] = collect( newSeq, (for k in 0..<domSize: evalLagrangePolyAt(D, k, toxic.tau) ))
+  
+  let columnTausA  : seq[Fr] = collect( newSeq, (for col in matrices.A: dotProdFr(col,lagrangeTaus) ))
+  let columnTausB  : seq[Fr] = collect( newSeq, (for col in matrices.B: dotProdFr(col,lagrangeTaus) ))
+  let columnTausC  : seq[Fr] = collect( newSeq, (for col in matrices.C: dotProdFr(col,lagrangeTaus) ))
+
+  let pointsA  : seq[G1] = collect( newSeq , (for y in columnTausA: (y ** gen1) ))
+  let pointsB1 : seq[G1] = collect( newSeq , (for y in columnTausB: (y ** gen1) ))
+  let pointsB2 : seq[G2] = collect( newSeq , (for y in columnTausB: (y ** gen2) ))
+  let pointsC  : seq[G1] = collect( newSeq , (for y in columnTausC: (y ** gen1) ))
 
   let gammaInv : Fr = invFr(toxic.gamma)
   let deltaInv : Fr = invFr(toxic.delta)

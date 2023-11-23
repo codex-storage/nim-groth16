@@ -1,6 +1,7 @@
 
 
-import std/[times, os]
+import std/[times,os]
+import strformat
 
 import groth16/prover
 import groth16/verifier
@@ -9,6 +10,8 @@ import groth16/files/r1cs
 import groth16/files/zkey
 import groth16/zkey_types
 import groth16/fake_setup
+
+func seconds(x: float): string = fmt"{x:.4f} seconds"
 
 #-------------------------------------------------------------------------------
 
@@ -22,7 +25,7 @@ proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) =
   let start = cpuTime()
   let proof = generateProof( zkey, witness )
   let elapsed = cpuTime() - start
-  echo("proving took ",elapsed)
+  echo("proving took ",seconds(elapsed))
 
   echo("verifying the proof...")
   let vkey = extractVKey( zkey)
@@ -41,7 +44,10 @@ proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): 
   let r1cs    = parseR1CS( r1cs_fname)
 
   echo("performing fake trusted setup...")
+  let start1 = cpuTime()
   let zkey = createFakeCircuitSetup( r1cs, flavour=flavour )
+  let elapsed1 = cpuTime() - start1
+  echo("fake setup took ",seconds(elapsed1))
 
   # printCoeffs(zkey.coeffs)
 
@@ -51,7 +57,7 @@ proc testFakeSetupAndVerify*( r1cs_fname, wtns_fname: string, flavour=Snarkjs): 
   let start = cpuTime()
   let proof = generateProof( zkey, witness )
   let elapsed = cpuTime() - start
-  echo("proving took ",elapsed)
+  echo("proving took ",seconds(elapsed))
 
   echo("verifying the proof...")
   let ok = verifyProof( vkey, proof )

@@ -6,8 +6,8 @@
 import constantine/math/arithmetic   except Fp, Fr
 #import constantine/math/io/io_fields except Fp, Fr
 
-import bn128
-from ./groth16 import Proof
+import groth16/bn128
+from groth16/prover import Proof
 
 #-------------------------------------------------------------------------------
 
@@ -33,6 +33,8 @@ proc exportPublicIO*( fpath: string, prf: Proof ) =
   let f = open(fpath, fmWrite)
   defer: f.close()
 
+  # note: we start from 1 because the 0th element is the constant 1 "variable", 
+  # which is automatically added by the tools
   for i in 1..<n:
     let str : string = toQuotedDecimalFr( prf.publicIO[i] )
     if i==1:

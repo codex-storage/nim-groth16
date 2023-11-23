@@ -19,12 +19,13 @@ at your choice.
 
 ### TODO
 
-- [ ] make it a nimble package
-- [ ] refactor `bn128.nim` into smaller files
-- [ ] proper MSM implementation (I couldn't make constantine's one to work)
+- [ ] clean up the code
+- [x] make it a nimble package
+- [/] refactor `bn128.nim` into smaller files
+- [/] proper MSM implementation (at first I couldn't make constantine's one to work)
 - [x] compare `.r1cs` to the "coeffs" section of `.zkey`
 - [x] generate fake circuit-specific setup ourselves
-- [ ] multithreaded support (MSM, and possibly also FFT)
+- [ ] multithreading support (MSM, and possibly also FFT)
 - [ ] add Groth16 notes
 - [ ] document the `snarkjs` circuit-specific setup `H` points convention
 - [ ] make it work for different curves

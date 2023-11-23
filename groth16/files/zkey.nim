@@ -31,7 +31,7 @@
 #   beta2   : G2        = [beta]_2
 #   gamma2  : G2        = [gamma]_2
 #   delta1  : G1        = [delta]_1
-#   delta2  : G2        = [delta_2]
+#   delta2  : G2        = [delta]_2
 #
 # 3: IC
 # -----
@@ -97,10 +97,10 @@ import std/streams
 import constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_bigints
  
-import ./bn128
-import ./zkey_types
-import ./container
-import ./misc
+import groth16/bn128
+import groth16/zkey_types
+import groth16/files/container
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 

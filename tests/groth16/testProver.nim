@@ -15,7 +15,7 @@ import groth16/bn128/fields
 #
 
 const myWitnessCfg =
-  WitnessConfig( nWires:  7
+  WitnessConfig( nWires:  8       # including the special variable "1"
                , nPubOut: 1       # public output = input + a*b*c = 1022 + 7*11*13 = 2023
                , nPubIn:  1       # public input  = 1022
                , nPrivIn: 3       # private inputs: 7, 11, 13
@@ -23,13 +23,13 @@ const myWitnessCfg =
                )
 
 # 2023 == 1022 + 7*3*11
-const myEq1 : Constraint = ( @[] , @[] , @[ (0,minusOneFr) , (1,oneFr) , (6,oneFr) ] )
+const myEq1 : Constraint = ( @[] , @[] , @[ (1,minusOneFr) , (2,oneFr) , (7,oneFr) ] )
 
 # 7*11 == 77
-const myEq2 : Constraint = ( @[ (2,oneFr) ] , @[ (3,oneFr) ] , @[ (5,oneFr) ] )
+const myEq2 : Constraint = ( @[ (3,oneFr) ] , @[ (4,oneFr) ] , @[ (6,oneFr) ] )
 
 # 77*13 == 1001
-const myEq3 : Constraint = ( @[ (4,oneFr) ] , @[ (5,oneFr) ] , @[ (6,oneFr) ] )
+const myEq3 : Constraint = ( @[ (5,oneFr) ] , @[ (6,oneFr) ] , @[ (7,oneFr) ] )
 
 const myConstraints : seq[Constraint] = @[ myEq1, myEq2, myEq3 ]
 
@@ -44,13 +44,13 @@ const myR1CS =
       )
 
 # the equation we want prove is `7*11*13 + 1022 == 2023`
-let myWitnessValues : seq[Fr] = map( @[ 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
-# wire indices:         ^^^^^^^             0     1    2  3   4    5      6
+let myWitnessValues : seq[Fr] = map( @[ 1, 2023, 1022, 7, 11, 13, 7*11, 7*11*13 ] , intToFr )
+# wire indices:         ^^^^^^^         0      1    2  3   4   5    6      7
 
 let myWitness = 
   Witness( curve:  "bn128"
          , r:      primeR
-         , nvars:  7
+         , nvars:  8
          , values: myWitnessValues
          )
 

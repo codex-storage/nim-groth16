@@ -16,24 +16,24 @@ from groth16/prover import Proof
 
 func toSpaces(str: string): string = spaces(str.len)
 
-func sageFp(prefix: string, x: Fp): string = prefix & "Fp(" & toDecimalFp(x) & ")"
-func sageFr(prefix: string, x: Fr): string = prefix & "Fr(" & toDecimalFr(x) & ")"
+func sageFp*(prefix: string, x: Fp): string = prefix & "Fp(" & toDecimalFp(x) & ")"
+func sageFr*(prefix: string, x: Fr): string = prefix & "Fr(" & toDecimalFr(x) & ")"
 
-func sageFp2(prefix: string, z: Fp2): string = 
+func sageFp2*(prefix: string, z: Fp2): string = 
   sageFp( prefix           & "mkFp2(" , z.coords[0]) & ",\n" & 
   sageFp( toSpaces(prefix) & "      " , z.coords[1]) & ")"
 
-func sageG1(prefix: string, p: G1): string = 
+func sageG1*(prefix: string, p: G1): string = 
   sageFp( prefix           & "E(" , p.x) & ",\n" & 
   sageFp( toSpaces(prefix) & "  " , p.y) & ")"
 
-func sageG2(prefix: string, p: G2): string =
+func sageG2*(prefix: string, p: G2): string =
   sageFp2( prefix           & "E2(" , p.x) & ",\n" & 
   sageFp2( toSpaces(prefix) & "   " , p.y) & ")"
 
 #-------------------------------------------------------------------------------
 
-proc exportVKey(h: Stream, vkey: VKey ) = 
+proc exportVKey*(h: Stream, vkey: VKey ) = 
   let spec = vkey.spec
   h.writeLine("alpha1 = \\") ; h.writeLine(sageG1("  ", spec.alpha1))
   h.writeLine("beta2  = \\") ; h.writeLine(sageG2("  ", spec.beta2 ))
@@ -117,7 +117,7 @@ const sage_bn128_lines : seq[string] =
   , ""
   ]
 
-const sage_bn128 : string = join(sage_bn128_lines, sep="\n")
+const sage_bn128* : string = join(sage_bn128_lines, sep="\n")
 
 #-------------------------------------------------------------------------------
 

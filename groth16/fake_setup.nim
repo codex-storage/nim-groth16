@@ -20,14 +20,14 @@ import groth16/misc
 #-------------------------------------------------------------------------------
 
 type 
-  ToxicWaste = object
-    alpha: Fr
-    beta:  Fr
-    gamma: Fr
-    delta: Fr
-    tau:   Fr
+  ToxicWaste* = object
+    alpha*: Fr
+    beta*:  Fr
+    gamma*: Fr
+    delta*: Fr
+    tau*:   Fr
 
-proc randomToxicWaste(): ToxicWaste = 
+proc randomToxicWaste*(): ToxicWaste = 
   let a = randFr()
   let b = randFr()
   let c = randFr()

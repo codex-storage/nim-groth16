@@ -149,7 +149,12 @@ func computeSnarkjsScalarCoeffs( abc: ABC ): seq[Fr] =
 # the prover
 #
 
-proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
+type
+  Mask* = object
+    r*: Fr              # masking coefficients 
+    s*: Fr              # for zero knowledge
+
+proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
   assert( zkey.header.curve == wtns.curve )
 
   let witness = wtns.values
@@ -186,8 +191,8 @@ proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
     zs[j-npubs-1] = witness[j]
 
   # masking coeffs
-  let r : Fr = randFr()
-  let s : Fr = randFr()
+  let r = mask.r
+  let s = mask.s
 
   var pi_a : G1 
   pi_a =  spec.alpha1
@@ -214,3 +219,12 @@ proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
   return Proof( curve:"bn128", publicIO:pubIO, pi_a:pi_a, pi_b:pi_b, pi_c:pi_c )
 
 #-------------------------------------------------------------------------------
+
+proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
+
+  # masking coeffs
+  let r : Fr = randFr()
+  let s : Fr = randFr()
+  let mask = Mask(r: r, s: s)
+
+  return generateProofWithMask( zkey, wtns, mask )

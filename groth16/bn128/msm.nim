@@ -121,7 +121,7 @@ func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
   for i in 0..<N:
     var t : ProjG1
     prj.fromAffine( t, points[i] )
-    scl.scalarMul( t , coeffs[i].toBig() )
+    scl.scalarMulGeneric( t , coeffs[i].toBig() )
     s += t
 
   var r : G1
@@ -141,7 +141,7 @@ func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
   for i in 0..<N:
     var t : ProjG2
     prj.fromAffine( t, points[i] )
-    scl.scalarMul( t , coeffs[i].toBig() )
+    scl.scalarMulGeneric( t , coeffs[i].toBig() )
     s += t
 
   var r : G2

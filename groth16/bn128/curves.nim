@@ -182,7 +182,7 @@ func `-=`*(p: var G2, q: G2) =    p = addG2(p,negG2(q))
 func `**`*( coeff: Fr , point: G1 ) : G1 =
   var q : ProjG1
   prj.fromAffine( q , point )
-  scl.scalarMul(  q , coeff.toBig() )
+  scl.scalarMulGeneric(  q , coeff.toBig() )
   var r : G1
   prj.affine( r, q )
   return r
@@ -190,7 +190,7 @@ func `**`*( coeff: Fr , point: G1 ) : G1 =
 func `**`*( coeff: Fr , point: G2 ) : G2 =
   var q : ProjG2
   prj.fromAffine( q , point )
-  scl.scalarMul(  q , coeff.toBig() )
+  scl.scalarMulGeneric(  q , coeff.toBig() )
   var r : G2
   prj.affine( r, q )
   return r
@@ -200,7 +200,7 @@ func `**`*( coeff: Fr , point: G2 ) : G2 =
 func `**`*( coeff: BigInt , point: G1 ) : G1 =
   var q : ProjG1
   prj.fromAffine( q , point )
-  scl.scalarMul(  q , coeff )
+  scl.scalarMulGeneric(  q , coeff )
   var r : G1
   prj.affine( r, q )
   return r
@@ -208,7 +208,7 @@ func `**`*( coeff: BigInt , point: G1 ) : G1 =
 func `**`*( coeff: BigInt , point: G2 ) : G2 =
   var q : ProjG2
   prj.fromAffine( q , point )
-  scl.scalarMul(  q , coeff )
+  scl.scalarMulGeneric(  q , coeff )
   var r : G2
   prj.affine( r, q )
   return r

@@ -19,7 +19,7 @@ import constantine/math/config/type_ff except Fp, Fr, Subgroup
 import constantine/math/extension_fields/towers                 as ext except Fp, Fp2, Fp12, Fr
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff except Subgroup
 import constantine/math/elliptic/ec_shortweierstrass_projective as prj except Subgroup
-import constantine/math/elliptic/ec_scalar_mul                  as scl except Subgroup
+import constantine/math/elliptic/ec_scalar_mul_vartime          as scl except Subgroup
 import constantine/math/elliptic/ec_multi_scalar_mul            as msm except Subgroup
 
 import groth16/bn128/fields
@@ -121,7 +121,7 @@ func msmNaiveG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 =
   for i in 0..<N:
     var t : ProjG1
     prj.fromAffine( t, points[i] )
-    scl.scalarMulGeneric( t , coeffs[i].toBig() )
+    scl.scalarMul_vartime( t , coeffs[i].toBig() )
     s += t
 
   var r : G1
@@ -141,7 +141,7 @@ func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
   for i in 0..<N:
     var t : ProjG2
     prj.fromAffine( t, points[i] )
-    scl.scalarMulGeneric( t , coeffs[i].toBig() )
+    scl.scalarMul_vartime( t , coeffs[i].toBig() )
     s += t
 
   var r : G2

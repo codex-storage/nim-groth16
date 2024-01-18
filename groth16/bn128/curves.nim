@@ -24,7 +24,7 @@ import constantine/math/extension_fields/towers as ext except Fp, Fp2, Fp12, Fr
 import constantine/math/elliptic/ec_shortweierstrass_affine     as aff 
 import constantine/math/elliptic/ec_shortweierstrass_projective as prj 
 import constantine/math/pairings/pairings_bn                    as ate 
-import constantine/math/elliptic/ec_scalar_mul                  as scl 
+import constantine/math/elliptic/ec_scalar_mul_vartime          as scl 
 
 import groth16/bn128/fields
 
@@ -182,7 +182,7 @@ func `-=`*(p: var G2, q: G2) =    p = addG2(p,negG2(q))
 func `**`*( coeff: Fr , point: G1 ) : G1 =
   var q : ProjG1
   prj.fromAffine( q , point )
-  scl.scalarMulGeneric(  q , coeff.toBig() )
+  scl.scalarMul_vartime(  q , coeff.toBig() )
   var r : G1
   prj.affine( r, q )
   return r
@@ -190,7 +190,7 @@ func `**`*( coeff: Fr , point: G1 ) : G1 =
 func `**`*( coeff: Fr , point: G2 ) : G2 =
   var q : ProjG2
   prj.fromAffine( q , point )
-  scl.scalarMulGeneric(  q , coeff.toBig() )
+  scl.scalarMul_vartime(  q , coeff.toBig() )
   var r : G2
   prj.affine( r, q )
   return r
@@ -200,7 +200,7 @@ func `**`*( coeff: Fr , point: G2 ) : G2 =
 func `**`*( coeff: BigInt , point: G1 ) : G1 =
   var q : ProjG1
   prj.fromAffine( q , point )
-  scl.scalarMulGeneric(  q , coeff )
+  scl.scalarMul_vartime(  q , coeff )
   var r : G1
   prj.affine( r, q )
   return r
@@ -208,7 +208,7 @@ func `**`*( coeff: BigInt , point: G1 ) : G1 =
 func `**`*( coeff: BigInt , point: G2 ) : G2 =
   var q : ProjG2
   prj.fromAffine( q , point )
-  scl.scalarMulGeneric(  q , coeff )
+  scl.scalarMul_vartime(  q , coeff )
   var r : G2
   prj.affine( r, q )
   return r

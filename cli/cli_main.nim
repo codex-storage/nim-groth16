@@ -178,11 +178,20 @@ proc cliMain(cfg: Config) =
     if cfg.measure_time: echo("parsing the r1cs took ",seconds(elapsed))
 
   if cfg.do_setup:
-    echo("\nerror:setup is not yet implemented")   
-    quit()
+    if not (cfg.zkey_file == ""):
+      echo("\nwe are doing a fake trusted setup, don't specify the zkey file!")   
+      quit()
+    if (cfg.r1cs_file == ""):
+      echo("\nerror: r1cs file is required for the fake setup!")
+      quit()
+    echo("\nperforming fake trusted setup...")
+    let start = cpuTime()
+    zkey = createFakeCircuitSetup( r1cs, flavour=Snarkjs )
+    let elapsed = cpuTime() - start
+    if cfg.measure_time: echo("fake setup took ",seconds(elapsed))
 
   if cfg.do_prove:
-    if (cfg.wtns_file == "") or (cfg.zkey_file == ""):
+    if (cfg.wtns_file=="") or (cfg.zkey_file=="" and cfg.do_setup==false):
       echo("cannot prove: missing witness and/or zkey file!")      
       quit()
     else:
@@ -199,7 +208,7 @@ proc cliMain(cfg: Config) =
         exportPublicIO( cfg.io_file, proof )
 
   if cfg.do_verify:
-    if (cfg.zkey_file == ""):
+    if (cfg.zkey_file == "" and cfg.do_setup==false):
       echo("cannot verify: missing vkey (well, zkey)")      
       quit()
     else:

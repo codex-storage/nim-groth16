@@ -108,6 +108,9 @@ func shiftEvalDomain( values: seq[Fr], D: Domain, eta: Fr ): seq[Fr] =
 # remark: Q has degree `n-2`, so it's enough to use a domain of size n
 func computeQuotientPointwise( abc: ABC ): Poly =
   let n    = abc.valuesA.len
+  assert( abc.valuesB.len == n )
+  assert( abc.valuesC.len == n )
+
   let D    = createDomain(n)
   
   # (eta*omega^j)^n - 1 = eta^n - 1 
@@ -136,6 +139,8 @@ func computeQuotientPointwise( abc: ABC ): Poly =
 #
 func computeSnarkjsScalarCoeffs( abc: ABC ): seq[Fr] =
   let n    = abc.valuesA.len
+  assert( abc.valuesB.len == n )
+  assert( abc.valuesC.len == n )
   let D    = createDomain(n)
   let eta  = createDomain(2*n).domainGen
   let A1   = shiftEvalDomain( abc.valuesA, D, eta )
@@ -155,6 +160,11 @@ type
     s*: Fr              # for zero knowledge
 
 proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
+
+  # if (zkey.header.curve != wtns.curve):
+  #   echo( "zkey.header.curve = " & ($zkey.header.curve) )
+  #   echo( "wtns.curve        = " & ($wtns.curve       ) )
+
   assert( zkey.header.curve == wtns.curve )
 
   let witness = wtns.values

@@ -7,6 +7,7 @@
 # 
 
 import sugar
+import std/tables
 
 import constantine/math/arithmetic except Fp, Fr
 
@@ -64,18 +65,21 @@ func r1csToCoeffs*(r1cs: R1CS): seq[Coeff] =
   return coeffs
 
 #-------------------------------------------------------------------------------
+# Note: dense matrices can be very big, this is only feasible for small circuits
 
-type Column*[T] = seq[T]
+type DenseColumn*[T] = seq[T]
 
-type Matrix*[T] = seq[Column[T]]
+type DenseMatrix*[T] = seq[DenseColumn[T]]
 
 type 
-  Matrices* = object
-    A* : Matrix[Fr]
-    B* : Matrix[Fr]
-    C* : Matrix[Fr]
+  DenseMatrices* = object
+    A* : DenseMatrix[Fr]
+    B* : DenseMatrix[Fr]
+    C* : DenseMatrix[Fr]
 
-func r1csToMatrices*(r1cs: R1CS): Matrices =
+#[
+
+func r1csToDenseMatrices*(r1cs: R1CS): DenseMatrices =
   let n = r1cs.constraints.len
   let m = r1cs.cfg.nWires
   let p = r1cs.cfg.nPubIn + r1cs.cfg.nPubOut
@@ -83,7 +87,7 @@ func r1csToMatrices*(r1cs: R1CS): Matrices =
   let logDomSize = ceilingLog2(n+p+1)
   let domSize    = 1 shl logDomSize
 
-  var matA, matB, matC: Matrix[Fr]
+  var matA, matB, matC: DenseMatrix[Fr]
   for i in 0..<m:
     var colA = newSeq[Fr](domSize)
     var colB = newSeq[Fr](domSize)
@@ -103,11 +107,11 @@ func r1csToMatrices*(r1cs: R1CS): Matrices =
   for i in n..n+p:
     matA[i-n][i] += oneFr
 
-  return Matrices(A:matA, B:matB, C:matC)
+  return DenseMatrices(A:matA, B:matB, C:matC)
 
 #-------------------------------------------------------------------------------
 
-func matricesToCoeffs*(matrices: Matrices): seq[Coeff] = 
+func denseMatricesToCoeffs*(matrices: DenseMatrices): seq[Coeff] = 
   let n = matrices.A[0].len
   let m = matrices.A.len
 
@@ -126,6 +130,61 @@ func matricesToCoeffs*(matrices: Matrices): seq[Coeff] =
         coeffs.add(x)
 
   return coeffs
+
+]#
+
+#-------------------------------------------------------------------------------
+
+type SparseColumn*[T] = Table[int,T]
+
+proc columnInsertWithAddFr( col: var SparseColumn[Fr] , i: int,  y: Fr ) =
+  var x = getOrDefault( col, i, zeroFr )
+  x += y
+  col[i] = x
+
+proc sparseDenseDotProdFr( U: SparseColumn[Fr], V: DenseColumn[Fr] ): Fr =
+  var acc : Fr = zeroFr
+  for i,x in U.pairs:
+    acc += x * V[i]
+  return acc
+
+type SparseMatrix*[T] = seq[SparseColumn[T]]
+
+type 
+  SparseMatrices* = object
+    A* : SparseMatrix[Fr]
+    B* : SparseMatrix[Fr]
+    C* : SparseMatrix[Fr]
+
+func r1csToSparseMatrices*(r1cs: R1CS): SparseMatrices =
+  let n = r1cs.constraints.len
+  let m = r1cs.cfg.nWires
+  let p = r1cs.cfg.nPubIn + r1cs.cfg.nPubOut
+
+  let logDomSize = ceilingLog2(n+p+1)
+  let domSize    = 1 shl logDomSize
+
+  var matA, matB, matC: SparseMatrix[Fr]
+  for i in 0..<m:
+    var colA : SparseColumn[Fr] = initTable[int,Fr]()
+    var colB : SparseColumn[Fr] = initTable[int,Fr]()
+    var colC : SparseColumn[Fr] = initTable[int,Fr]()
+    matA.add( colA )
+    matB.add( colB )
+    matC.add( colC )
+
+  for i in 0..<n:
+    let ct = r1cs.constraints[i]
+    for term in ct.A: columnInsertWithAddFr( matA[term.wireIdx] , i , term.value )
+    for term in ct.B: columnInsertWithAddFr( matB[term.wireIdx] , i , term.value )
+    for term in ct.C: columnInsertWithAddFr( matC[term.wireIdx] , i , term.value )
+
+  # Snarkjs adds some dummy coefficients to the matrix "A", for the public I/O
+  # Let's emulate that here
+  for i in n..n+p:
+    columnInsertWithAddFr( matA[i-n] , i , oneFr )
+
+  return SparseMatrices(A:matA, B:matB, C:matC)
 
 #-------------------------------------------------------------------------------
 
@@ -175,14 +234,11 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
                   , alphaBeta : pairing( toxic.alpha ** gen1 , toxic.beta ** gen2 )  
                   )
 
-  let matrices = r1csToMatrices(r1cs)
-  let coeffs   = r1csToCoeffs( r1cs )
-  # let coeffs   = matricesToCoeffs(matrices)
-
+  let matrices = r1csToSparseMatrices(r1cs)
   let D : Domain = createDomain(domSize) 
 
 #[
-  # this approach is very inefficient
+  # this approach is extremely inefficient
 
   let polyAs : seq[Poly] = collect( newSeq , (for col in matrices.A: polyInverseNTT(col, D) ))
   let polyBs : seq[Poly] = collect( newSeq , (for col in matrices.B: polyInverseNTT(col, D) ))
@@ -198,9 +254,16 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
   # we can then simply take the dot product of these with the column vectors to compute the points A,B1,B2,C
   let lagrangeTaus : seq[Fr] = collect( newSeq, (for k in 0..<domSize: evalLagrangePolyAt(D, k, toxic.tau) ))
   
+#[
+  # dense matrices use way too much memory
   let columnTausA  : seq[Fr] = collect( newSeq, (for col in matrices.A: dotProdFr(col,lagrangeTaus) ))
   let columnTausB  : seq[Fr] = collect( newSeq, (for col in matrices.B: dotProdFr(col,lagrangeTaus) ))
   let columnTausC  : seq[Fr] = collect( newSeq, (for col in matrices.C: dotProdFr(col,lagrangeTaus) ))
+]#
+
+  let columnTausA  : seq[Fr] = collect( newSeq, (for col in matrices.A: sparseDenseDotProdFr(col,lagrangeTaus) ))
+  let columnTausB  : seq[Fr] = collect( newSeq, (for col in matrices.B: sparseDenseDotProdFr(col,lagrangeTaus) ))
+  let columnTausC  : seq[Fr] = collect( newSeq, (for col in matrices.C: sparseDenseDotProdFr(col,lagrangeTaus) ))
 
   let pointsA  : seq[G1] = collect( newSeq , (for y in columnTausA: (y ** gen1) ))
   let pointsB1 : seq[G1] = collect( newSeq , (for y in columnTausB: (y ** gen1) ))
@@ -251,6 +314,8 @@ func fakeCircuitSetup*(r1cs: R1CS, toxic: ToxicWaste, flavour=Snarkjs): ZKey =
                     , pointsC1: pointsK
                     , pointsH1: pointsH 
                     )
+
+  let coeffs   = r1csToCoeffs( r1cs )
 
   return 
     ZKey( header:     header

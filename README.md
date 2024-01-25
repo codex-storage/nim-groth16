@@ -19,12 +19,13 @@ at your choice.
 
 ### TODO
 
+- [ ] find and fix the _second_ totally surreal bug
 - [ ] clean up the code
+- [ ] make it compatible with the latest constantine and also Nim 2.0.x
 - [x] make it a nimble package
-- [/] refactor `bn128.nim` into smaller files
-- [/] proper MSM implementation (at first I couldn't make constantine's one to work)
-- [x] compare `.r1cs` to the "coeffs" section of `.zkey`
+- [ ] compare `.r1cs` to the "coeffs" section of `.zkey`
 - [x] generate fake circuit-specific setup ourselves
+- [x] make a CLI interface
 - [ ] multithreading support (MSM, and possibly also FFT)
 - [ ] add Groth16 notes
 - [ ] document the `snarkjs` circuit-specific setup `H` points convention

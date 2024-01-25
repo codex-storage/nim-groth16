@@ -4,7 +4,7 @@ import std/strutils
 import std/sequtils
 import std/os
 import std/parseopt
-import std/[times,os]
+import std/times
 import std/options
 import strformat
 
@@ -26,6 +26,7 @@ proc printHelp() =
   echo "available options:"
   echo " -h, --help                      : print this help"
   echo " -v, --verbose                   : verbose output"
+  echo " -d, --debug                     : debug output"
   echo " -t, --time                      : print time measurements"
   echo " -p, --prove                     : create a proof"
   echo " -y, --verify                    : verify a proof"
@@ -45,6 +46,7 @@ type Config = object
   output_file:  string
   io_file:      string
   verbose:      bool
+  debug:        bool
   measure_time: bool
   do_prove:     bool
   do_verify:    bool
@@ -95,6 +97,7 @@ proc parseCliOptions(): Config =
 
       of "h", "help"             : printHelp()
       of "v", "verbose"          : cfg.verbose        = true
+      of "d", "debug"            : cfg.debug          = true
       of "t", "time"             : cfg.measure_time   = true
       of "p", "prove"            : cfg.do_prove       = true
       of "y", "verify"           : cfg.do_verify      = true
@@ -189,6 +192,10 @@ proc cliMain(cfg: Config) =
     zkey = createFakeCircuitSetup( r1cs, flavour=Snarkjs )
     let elapsed = cpuTime() - start
     if cfg.measure_time: echo("fake setup took ",seconds(elapsed))
+
+  if cfg.debug:
+    printGrothHeader(zkey.header)
+    # debugPrintCoeffs(zkey.coeffs)
 
   if cfg.do_prove:
     if (cfg.wtns_file=="") or (cfg.zkey_file=="" and cfg.do_setup==false):

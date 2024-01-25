@@ -36,32 +36,34 @@ type
     curve*    : string
 
 #-------------------------------------------------------------------------------
-# A, B, C column vectors
+# Az, Bz, Cz column vectors
 # 
 
 type
   ABC = object
-    valuesA : seq[Fr]
-    valuesB : seq[Fr]
-    valuesC : seq[Fr]
+    valuesAz : seq[Fr]
+    valuesBz : seq[Fr]
+    valuesCz : seq[Fr]
 
+# computes the vectors A*z, B*z, C*z where z is the witness
 func buildABC( zkey: ZKey, witness: seq[Fr] ): ABC = 
   let hdr: GrothHeader = zkey.header
   let domSize = hdr.domainSize
 
-  var valuesA : seq[Fr] = newSeq[Fr](domSize)
-  var valuesB : seq[Fr] = newSeq[Fr](domSize)
+  var valuesAz : seq[Fr] = newSeq[Fr](domSize)
+  var valuesBz : seq[Fr] = newSeq[Fr](domSize)
+
   for entry in zkey.coeffs:
     case entry.matrix 
-      of MatrixA: valuesA[entry.row] += entry.coeff * witness[entry.col]
-      of MatrixB: valuesB[entry.row] += entry.coeff * witness[entry.col]
+      of MatrixA: valuesAz[entry.row] += entry.coeff * witness[entry.col]
+      of MatrixB: valuesBz[entry.row] += entry.coeff * witness[entry.col]
       else: raise newException(AssertionDefect, "fatal error")
 
-  var valuesC : seq[Fr] = newSeq[Fr](domSize)
+  var valuesCz : seq[Fr] = newSeq[Fr](domSize)
   for i in 0..<domSize:
-    valuesC[i] = valuesA[i] * valuesB[i]
+    valuesCz[i] = valuesAz[i] * valuesBz[i]
 
-  return ABC( valuesA:valuesA, valuesB:valuesB, valuesC:valuesC )
+  return ABC( valuesAz:valuesAz, valuesBz:valuesBz, valuesCz:valuesCz )
 
 #-------------------------------------------------------------------------------
 # quotient poly
@@ -69,13 +71,13 @@ func buildABC( zkey: ZKey, witness: seq[Fr] ): ABC =
 
 # interpolates A,B,C, and computes the quotient polynomial Q = (A*B - C) / Z
 func computeQuotientNaive( abc: ABC ): Poly=
-  let n = abc.valuesA.len
-  assert( abc.valuesB.len == n )
-  assert( abc.valuesC.len == n )
+  let n = abc.valuesAz.len
+  assert( abc.valuesBz.len == n )
+  assert( abc.valuesCz.len == n )
   let D = createDomain(n)
-  let polyA : Poly = polyInverseNTT( abc.valuesA , D )
-  let polyB : Poly = polyInverseNTT( abc.valuesB , D )
-  let polyC : Poly = polyInverseNTT( abc.valuesC , D )
+  let polyA : Poly = polyInverseNTT( abc.valuesAz , D )
+  let polyB : Poly = polyInverseNTT( abc.valuesBz , D )
+  let polyC : Poly = polyInverseNTT( abc.valuesCz , D )
   let polyBig = polyMulFFT( polyA , polyB ) - polyC
   var polyQ   = polyDivideByVanishing(polyBig, D.domainSize)
   polyQ.coeffs.add( zeroFr )    # make it a power of two
@@ -107,9 +109,9 @@ func shiftEvalDomain( values: seq[Fr], D: Domain, eta: Fr ): seq[Fr] =
 # by computing the values on a shifted domain, and interpolating the result
 # remark: Q has degree `n-2`, so it's enough to use a domain of size n
 func computeQuotientPointwise( abc: ABC ): Poly =
-  let n    = abc.valuesA.len
-  assert( abc.valuesB.len == n )
-  assert( abc.valuesC.len == n )
+  let n    = abc.valuesAz.len
+  assert( abc.valuesBz.len == n )
+  assert( abc.valuesCz.len == n )
 
   let D    = createDomain(n)
   
@@ -118,9 +120,9 @@ func computeQuotientPointwise( abc: ABC ): Poly =
   let eta   = createDomain(2*n).domainGen
   let invZ1 = invFr( smallPowFr(eta,n) - oneFr )
 
-  let A1   = shiftEvalDomain( abc.valuesA, D, eta )
-  let B1   = shiftEvalDomain( abc.valuesB, D, eta )
-  let C1   = shiftEvalDomain( abc.valuesC, D, eta )
+  let A1   = shiftEvalDomain( abc.valuesAz, D, eta )
+  let B1   = shiftEvalDomain( abc.valuesBz, D, eta )
+  let C1   = shiftEvalDomain( abc.valuesCz, D, eta )
 
   var ys : seq[Fr] = newSeq[Fr]( n )
   for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) * invZ1
@@ -138,14 +140,14 @@ func computeQuotientPointwise( abc: ABC ): Poly =
 # see <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #
 func computeSnarkjsScalarCoeffs( abc: ABC ): seq[Fr] =
-  let n    = abc.valuesA.len
-  assert( abc.valuesB.len == n )
-  assert( abc.valuesC.len == n )
+  let n    = abc.valuesAz.len
+  assert( abc.valuesBz.len == n )
+  assert( abc.valuesCz.len == n )
   let D    = createDomain(n)
   let eta  = createDomain(2*n).domainGen
-  let A1   = shiftEvalDomain( abc.valuesA, D, eta )
-  let B1   = shiftEvalDomain( abc.valuesB, D, eta )
-  let C1   = shiftEvalDomain( abc.valuesC, D, eta )
+  let A1   = shiftEvalDomain( abc.valuesAz, D, eta )
+  let B1   = shiftEvalDomain( abc.valuesBz, D, eta )
+  let C1   = shiftEvalDomain( abc.valuesCz, D, eta )
   var ys : seq[Fr] = newSeq[Fr]( n )
   for j in 0..<n: ys[j] = ( A1[j]*B1[j] - C1[j] ) 
   return ys
@@ -178,8 +180,9 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
 
   assert( nvars == witness.len , "wrong witness length" )
 
+  # remark: with the special variable "1" we actuall have (npub+1) public IO variables
   var pubIO : seq[Fr] = newSeq[Fr]( npubs + 1)
-  for i in 0..npubs: pubIO[i] = witness[i]
+  for i in 0..npubs: pubIO[i] = witness[i]             
 
   var abc : ABC = buildABC( zkey, witness )
 
@@ -203,6 +206,14 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
   # masking coeffs
   let r = mask.r
   let s = mask.s
+
+  assert( witness.len == pts.pointsA1.len )
+  assert( witness.len == pts.pointsB1.len )
+  assert( witness.len == pts.pointsB2.len )
+  assert( hdr.domainSize    == qs.len           )
+  assert( hdr.domainSize    == pts.pointsH1.len )
+  assert( nvars - npubs - 1 == zs.len           )
+  assert( nvars - npubs - 1 == pts.pointsC1.len )
 
   var pi_a : G1 
   pi_a =  spec.alpha1

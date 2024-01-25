@@ -74,6 +74,18 @@ func extractVKey*(zkey: Zkey): VKey =
 
 #-------------------------------------------------------------------------------
 
+proc printGrothHeader*(hdr: GrothHeader) = 
+  echo("curve        = " & ($hdr.curve        ) ) 
+  echo("flavour      = " & ($hdr.flavour      ) ) 
+  echo("|Fp|         = " & (toDecimalBig(hdr.p)) ) 
+  echo("|Fr|         = " & (toDecimalBig(hdr.r)) ) 
+  echo("nvars        = " & ($hdr.nvars        ) ) 
+  echo("npubs        = " & ($hdr.npubs        ) ) 
+  echo("domainSize   = " & ($hdr.domainSize   ) ) 
+  echo("logDomainSize= " & ($hdr.logDomainSize) ) 
+
+#-------------------------------------------------------------------------------
+
 func matrixSelToString(sel: MatrixSel): string = 
   case sel 
     of MatrixA: return "A"

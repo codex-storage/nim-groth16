@@ -15,6 +15,9 @@ import constantine/math/io/io_bigints
 import ./zkey
 ]#
 
+import std/os
+import std/times
+
 import constantine/math/arithmetic except Fp, Fr
 #import constantine/math/io/io_extfields except Fp12
 #import constantine/math/extension_fields/towers except Fp2, Fp12  
@@ -24,6 +27,7 @@ import groth16/math/domain
 import groth16/math/poly
 import groth16/zkey_types
 import groth16/files/witness
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 
@@ -161,13 +165,14 @@ type
     r*: Fr              # masking coefficients 
     s*: Fr              # for zero knowledge
 
-proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
+proc generateProofWithMask*( printTimings: bool, zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
 
   # if (zkey.header.curve != wtns.curve):
   #   echo( "zkey.header.curve = " & ($zkey.header.curve) )
   #   echo( "wtns.curve        = " & ($wtns.curve       ) )
 
   assert( zkey.header.curve == wtns.curve )
+  var start : float = 0
 
   let witness = wtns.values
 
@@ -184,8 +189,13 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
   var pubIO : seq[Fr] = newSeq[Fr]( npubs + 1)
   for i in 0..npubs: pubIO[i] = witness[i]             
 
+  start = cpuTime()
   var abc : ABC = buildABC( zkey, witness )
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("building 'ABC' took ",seconds(elapsed))
 
+  start = cpuTime()
   var qs : seq[Fr]
   case zkey.header.flavour
 
@@ -198,6 +208,10 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
     # where L_i are Lagrange basis polynomials on the double-sized domain
     of Snarkjs:
       qs = computeSnarkjsScalarCoeffs( abc )
+
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("computing the quotient took ",seconds(elapsed))
 
   var zs : seq[Fr] = newSeq[Fr]( nvars - npubs - 1 )
   for j in npubs+1..<nvars:
@@ -215,37 +229,53 @@ proc generateProofWithMask*( zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
   assert( nvars - npubs - 1 == zs.len           )
   assert( nvars - npubs - 1 == pts.pointsC1.len )
 
+  start = cpuTime()
   var pi_a : G1 
   pi_a =  spec.alpha1
   pi_a += r ** spec.delta1
   pi_a += msmG1( witness , pts.pointsA1 )
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("computing pi_A (G1 MSM) took ",seconds(elapsed))
 
+  start = cpuTime()
   var rho : G1 
   rho =  spec.beta1
   rho += s ** spec.delta1
   rho += msmG1( witness , pts.pointsB1 )
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("computing rho (G1 MSM) took ",seconds(elapsed))
 
+  start = cpuTime()
   var pi_b : G2
   pi_b =  spec.beta2
   pi_b += s ** spec.delta2
   pi_b += msmG2( witness , pts.pointsB2 )
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("computing pi_B (G2 MSM) took ",seconds(elapsed))
 
+  start = cpuTime()
   var pi_c : G1
   pi_c =  s ** pi_a
   pi_c += r ** rho
   pi_c += negFr(r*s) ** spec.delta1
   pi_c += msmG1( qs , pts.pointsH1 )
   pi_c += msmG1( zs , pts.pointsC1 )
+  if printTimings: 
+    let elapsed = cpuTime() - start
+    echo("computing pi_C (2x G1 MSM) took ",seconds(elapsed))
 
   return Proof( curve:"bn128", publicIO:pubIO, pi_a:pi_a, pi_b:pi_b, pi_c:pi_c )
 
 #-------------------------------------------------------------------------------
 
-proc generateProof*( zkey: ZKey, wtns: Witness ): Proof =
+proc generateProof*( printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
 
   # masking coeffs
   let r : Fr = randFr()
   let s : Fr = randFr()
   let mask = Mask(r: r, s: s)
 
-  return generateProofWithMask( zkey, wtns, mask )
+  return generateProofWithMask( printTimings, zkey, wtns, mask )

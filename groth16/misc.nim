@@ -3,6 +3,14 @@
 # miscellaneous routines
 #
 
+import strformat
+
+#-------------------------------------------------------------------------------
+
+func seconds*(x: float): string = fmt"{x:.4f} seconds"
+
+func quoted*(s: string): string = fmt"`{s:s}`"
+
 #-------------------------------------------------------------------------------
 
 func delta*(i, j: int) : int =

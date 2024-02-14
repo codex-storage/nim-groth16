@@ -6,7 +6,7 @@ import std/os
 import std/parseopt
 import std/times
 import std/options
-import strformat
+# import strformat
 
 import groth16/prover
 import groth16/verifier
@@ -16,6 +16,7 @@ import groth16/files/zkey
 import groth16/files/export_json
 import groth16/zkey_types
 import groth16/fake_setup
+import groth16/misc
 
 #-------------------------------------------------------------------------------
 
@@ -123,12 +124,6 @@ proc parseCliOptions(): Config =
 
 #-------------------------------------------------------------------------------
 
-func seconds(x: float): string = fmt"{x:.4f} seconds"
-
-func quoted(s: string): string = fmt"`{s:s}`"
-
-#-------------------------------------------------------------------------------
-
 #[
 proc testProveAndVerify*( zkey_fname, wtns_fname: string): (VKey,Proof) = 
 
@@ -204,7 +199,7 @@ proc cliMain(cfg: Config) =
     else:
       echo("generating proof...")
       let start = cpuTime()
-      proof = generateProof( zkey, wtns)
+      proof = generateProof(cfg.measure_time and cfg.verbose, zkey, wtns)
       let elapsed = cpuTime() - start
       if cfg.measure_time: echo("proving took ",seconds(elapsed))
       if not (cfg.output_file == ""):

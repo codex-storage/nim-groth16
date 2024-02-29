@@ -271,6 +271,10 @@ proc generateProofWithMask*( printTimings: bool, zkey: ZKey, wtns: Witness, mask
 
 #-------------------------------------------------------------------------------
 
+proc generateProofWithTrivialMask*( printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
+  let mask = Mask(r: intToFr(0), s: intToFr(0))
+  return generateProofWithMask( printTimings, zkey, wtns, mask )
+
 proc generateProof*( printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
 
   # masking coeffs

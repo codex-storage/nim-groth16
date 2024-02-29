@@ -32,6 +32,7 @@ proc printHelp() =
   echo " -p, --prove                     : create a proof"
   echo " -y, --verify                    : verify a proof"
   echo " -s, --setup                     : perform (fake) trusted setup"
+  echo " -n, --nomask                    : don't use random masking for full ZK"
   echo " -z, --zkey   = <circuit.zkey>   : the `.zkey` file"
   echo " -w, --wtns   = <circuit.wtns>   : the `.wtns` file" 
   echo " -r, --r1cs   = <circuit.r1cs>   : the `.r1cs` file" 
@@ -52,6 +53,7 @@ type Config = object
   do_prove:     bool
   do_verify:    bool
   do_setup:     bool
+  no_masking:   bool
 
 const dummyConfig = 
   Config( zkey_file:    ""
@@ -64,6 +66,7 @@ const dummyConfig =
         , do_prove:     false
         , do_verify:    false
         , do_setup:     false
+        , no_masking:   false
         )
 
 proc printConfig(cfg: Config) =
@@ -103,6 +106,7 @@ proc parseCliOptions(): Config =
       of "p", "prove"            : cfg.do_prove       = true
       of "y", "verify"           : cfg.do_verify      = true
       of "s", "setup"            : cfg.do_setup       = true
+      of "n", "nomask"           : cfg.no_masking     = true
       of "o", "output"           : cfg.output_file    = value
       of "r", "r1cs"             : cfg.r1cs_file      = value
       of "z", "zkey"             : cfg.zkey_file      = value
@@ -199,7 +203,11 @@ proc cliMain(cfg: Config) =
     else:
       echo("generating proof...")
       let start = cpuTime()
-      proof = generateProof(cfg.measure_time and cfg.verbose, zkey, wtns)
+      let print_timings = cfg.measure_time and cfg.verbose
+      if cfg.no_masking:
+        proof = generateProofWithTrivialMask(print_timings, zkey, wtns)
+      else:
+        proof = generateProof(print_timings, zkey, wtns)
       let elapsed = cpuTime() - start
       if cfg.measure_time: echo("proving took ",seconds(elapsed))
       if not (cfg.output_file == ""):

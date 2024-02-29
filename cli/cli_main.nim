@@ -31,7 +31,7 @@ proc printHelp() =
   echo " -t, --time                      : print time measurements"
   echo " -p, --prove                     : create a proof"
   echo " -y, --verify                    : verify a proof"
-  echo " -s, --setup                     : perform (fake) trusted setup"
+  echo " -u, --setup                     : perform (fake) trusted setup"
   echo " -n, --nomask                    : don't use random masking for full ZK"
   echo " -z, --zkey   = <circuit.zkey>   : the `.zkey` file"
   echo " -w, --wtns   = <circuit.wtns>   : the `.wtns` file" 
@@ -105,7 +105,7 @@ proc parseCliOptions(): Config =
       of "t", "time"             : cfg.measure_time   = true
       of "p", "prove"            : cfg.do_prove       = true
       of "y", "verify"           : cfg.do_verify      = true
-      of "s", "setup"            : cfg.do_setup       = true
+      of "u", "setup"            : cfg.do_setup       = true
       of "n", "nomask"           : cfg.no_masking     = true
       of "o", "output"           : cfg.output_file    = value
       of "r", "r1cs"             : cfg.r1cs_file      = value

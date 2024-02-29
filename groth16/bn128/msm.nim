@@ -61,8 +61,9 @@ func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
 
   var r : ProjG2
 
-  # [Fp,aff.G1]
-  msm.multiScalarMul_vartime( r,
+  # note: at the moment of writing this, `multiScalarMul_vartime` is buggy.
+  # however, the "reference" one is _much_ slower.
+  msm.multiScalarMul_reference_vartime( r,
     toOpenArray(bigcfs, 0, N-1),
     toOpenArray(points, 0, N-1) )
 

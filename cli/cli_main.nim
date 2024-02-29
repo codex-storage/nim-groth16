@@ -28,6 +28,7 @@ proc printHelp() =
   echo " -h, --help                      : print this help"
   echo " -v, --verbose                   : verbose output"
   echo " -d, --debug                     : debug output"
+  echo " -j, --nthreads                  : number of CPU threads"
   echo " -t, --time                      : print time measurements"
   echo " -p, --prove                     : create a proof"
   echo " -y, --verify                    : verify a proof"
@@ -54,6 +55,7 @@ type Config = object
   do_verify:    bool
   do_setup:     bool
   no_masking:   bool
+  nthreads:     int
 
 const dummyConfig = 
   Config( zkey_file:    ""
@@ -67,6 +69,7 @@ const dummyConfig =
         , do_verify:    false
         , do_setup:     false
         , no_masking:   false
+        , nthreads:     0
         )
 
 proc printConfig(cfg: Config) =
@@ -102,6 +105,7 @@ proc parseCliOptions(): Config =
       of "h", "help"             : printHelp()
       of "v", "verbose"          : cfg.verbose        = true
       of "d", "debug"            : cfg.debug          = true
+      of "j", "nthreads"         : cfg.nthreads       = parseInt(value)
       of "t", "time"             : cfg.measure_time   = true
       of "p", "prove"            : cfg.do_prove       = true
       of "y", "verify"           : cfg.do_verify      = true
@@ -160,25 +164,19 @@ proc cliMain(cfg: Config) =
 
   if not (cfg.wtns_file == ""):
     echo("\nparsing witness file " & quoted(cfg.wtns_file))
-    let start = cpuTime()
-    wtns = parseWitness(cfg.wtns_file)
-    let elapsed = cpuTime() - start
-    if cfg.measure_time: echo("parsing the witness took ",seconds(elapsed))
-
+    withMeasureTime(cfg.measure_time,"parsing the witness"):
+      wtns = parseWitness(cfg.wtns_file)
+  
   if not (cfg.zkey_file == ""):
     echo("\nparsing zkey file " & quoted(cfg.zkey_file))
-    let start = cpuTime()
-    zkey = parseZKey(cfg.zkey_file)
-    let elapsed = cpuTime() - start
-    if cfg.measure_time: echo("parsing the zkey took ",seconds(elapsed))
-
+    withMeasureTime(cfg.measure_time,"parsing the zkey"):
+      zkey = parseZKey(cfg.zkey_file)
+  
   if not (cfg.r1cs_file == ""):
     echo("\nparsing r1cs file " & quoted(cfg.r1cs_file))
-    let start = cpuTime()
-    r1cs = parseR1CS(cfg.r1cs_file)
-    let elapsed = cpuTime() - start
-    if cfg.measure_time: echo("parsing the r1cs took ",seconds(elapsed))
-
+    withMeasureTime(cfg.measure_time,"parsing the r1cs"):
+      r1cs = parseR1CS(cfg.r1cs_file)
+  
   if cfg.do_setup:
     if not (cfg.zkey_file == ""):
       echo("\nwe are doing a fake trusted setup, don't specify the zkey file!")   
@@ -187,11 +185,9 @@ proc cliMain(cfg: Config) =
       echo("\nerror: r1cs file is required for the fake setup!")
       quit()
     echo("\nperforming fake trusted setup...")
-    let start = cpuTime()
-    zkey = createFakeCircuitSetup( r1cs, flavour=Snarkjs )
-    let elapsed = cpuTime() - start
-    if cfg.measure_time: echo("fake setup took ",seconds(elapsed))
-
+    withMeasureTime(cfg.measure_time,"fake setup"):
+      zkey = createFakeCircuitSetup( r1cs, flavour=Snarkjs )
+  
   if cfg.debug:
     printGrothHeader(zkey.header)
     # debugPrintCoeffs(zkey.coeffs)
@@ -202,14 +198,13 @@ proc cliMain(cfg: Config) =
       quit()
     else:
       echo("generating proof...")
-      let start = cpuTime()
       let print_timings = cfg.measure_time and cfg.verbose
-      if cfg.no_masking:
-        proof = generateProofWithTrivialMask(print_timings, zkey, wtns)
-      else:
-        proof = generateProof(print_timings, zkey, wtns)
-      let elapsed = cpuTime() - start
-      if cfg.measure_time: echo("proving took ",seconds(elapsed))
+      withMeasureTime(cfg.measure_time,"proving"):
+        if cfg.no_masking:
+          proof = generateProofWithTrivialMask(cfg.nthreads, print_timings, zkey, wtns)
+        else:
+          proof = generateProof(cfg.nthreads, print_timings, zkey, wtns)
+    
       if not (cfg.output_file == ""):
         echo("exporting the proof to " & quoted(cfg.output_file))
         exportProof( cfg.output_file, proof )
@@ -224,12 +219,11 @@ proc cliMain(cfg: Config) =
     else:
       let vkey = extractVKey( zkey)
       echo("\nverifying the proof...")
-      let start = cpuTime()
-      let ok = verifyProof( vkey, proof )
-      let elapsed = cpuTime() - start
-      echo("verification succeeded = ",ok)
-      if cfg.measure_time: echo("verifying took ",seconds(elapsed))
-
+      var ok : bool
+      withMeasureTime(cfg.measure_time,"verifying"):
+        ok = verifyProof( vkey, proof )
+        echo("verification succeeded = ",ok)
+    
   echo("")
 
 #-------------------------------------------------------------------------------

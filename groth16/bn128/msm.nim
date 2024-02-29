@@ -4,6 +4,8 @@
 # 
 
 import system
+import std/cpuinfo
+import taskpools
 
 # import constantine/curves_primitives except Fp, Fp2, Fr
  
@@ -23,11 +25,16 @@ import constantine/math/elliptic/ec_scalar_mul_vartime          as scl except Su
 import constantine/math/elliptic/ec_multi_scalar_mul            as msm except Subgroup
 
 import groth16/bn128/fields
-import groth16/bn128/curves
+import groth16/bn128/curves as mycurves
+
+import groth16/misc    # TEMP DEBUGGING
+import std/times
 
 #-------------------------------------------------------------------------------
 
-func msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
+proc msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
+
+  # let start = cpuTime()
 
   let N = coeffs.len
   assert( N == points.len, "incompatible sequence lengths" )
@@ -45,6 +52,9 @@ func msmConstantineG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
 
   var rAff: G1
   prj.affine(rAff, r)
+
+  # let elapsed = cpuTime() - start
+  # echo("computing an MSM of size " & ($N) & " took " & seconds(elapsed))
 
   return rAff
 
@@ -74,41 +84,96 @@ func msmConstantineG2*( coeffs: openArray[Fr] , points: openArray[G2] ): G2 =
 
 #-------------------------------------------------------------------------------
 
-#[
-type InputTuple = tuple[idx:int, coeffs: openArray[Fr] , points: openArray[G1]]
+const task_multiplier : int = 1
 
-func msmMultiThreadedG1*( coeffs: openArray[Fr] , points: openArray[G1] ): G1 =
-  let N = coeffs.len
-  assert( N == points.len, "incompatible sequence lengths" )
-
-  let nthreadsTarget = 8
+proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] ): G1 =
 
   # for N <= 255 , we use 1 thread
   # for N == 256 , we use 2 threads
   # for N == 512 , we use 4 threads 
-  # for N >= 1024, we use 8 threads 
-  let nthreads = max( 1 , min( N div 128 , nthreadsTarget ) )
+  # for N >= 1024, we use 8+ threads 
 
-  let m = N div nthreads
+  let N = coeffs.len
+  assert( N == points.len, "incompatible sequence lengths" )
+  let nthreads_target = if (nthreads_hint<=0): countProcessors() else: min( nthreads_hint, 256 )
+  let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
+  let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
 
-  var threads : seq[Thread[InputTuple]] = newSeq[Thread[InputTuple]]( nthreads )
-  var results : seq[G1]                 = newSeq[G1]( nthreads )
+  # echo("msm with #threads =  " & $nthreads)
 
-  proc myThreadFunc( inp: InputTuple ) {.thread.} =
-    results[inp.idx] = msmConstantineG1( inp.coeffs, inp.points )
+  var pool = Taskpool.new(num_threads = nthreads)
+  var pending : seq[FlowVar[mycurves.G1]] = newSeq[FlowVar[mycurves.G1]](ntasks)
 
-  for i in 0..<nthreads:
-    let a = i*m
-    let b = if (i == nthreads-1): N else: (i+1)*m
-    createThread(threads[i], myThreadFunc, (i, coeffs[a..<b], points[a..<b]))
+  # nim is just batshit crazy...
+  GC_ref(coeffs) 
+  GC_ref(points) 
 
-  joinThreads(threads)
+  var a : int = 0
+  var b : int
+  for k in 0..<ntasks:
+    if k < ntasks-1:
+      b = (N*(k+1)) div ntasks
+    else:
+      b = N
+    let cs = coeffs[a..<b]
+    let ps = points[a..<b]
+    pending[k] = pool.spawn msmConstantineG1( cs, ps );
+    a = b
 
-  var r : G1 = infG1
-  for i in 0..<nthreads: r += results[i]
+  var res : G1 = infG1
+  for k in 0..<ntasks:
+    res += sync pending[k]
 
-  return r
-]#
+  pool.syncAll()    
+  pool.shutdown()
+
+  GC_unref(coeffs) 
+  GC_unref(points) 
+
+  return res
+
+#---------------------------------------
+
+proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] ): G2 =
+
+  let N = coeffs.len
+  assert( N == points.len, "incompatible sequence lengths" )
+  let nthreads_target = if (nthreads_hint<=0): countProcessors() else: min( nthreads_hint, 256 )
+  let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
+  let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
+
+  # echo("G2 msm with #threads =  " & $nthreads)
+
+  var pool = Taskpool.new(num_threads = nthreads)
+  var pending : seq[FlowVar[mycurves.G2]] = newSeq[FlowVar[mycurves.G2]](ntasks)
+
+  # nim is just batshit crazy...
+  GC_ref(coeffs) 
+  GC_ref(points) 
+
+  var a : int = 0
+  var b : int
+  for k in 0..<ntasks:
+    if k < ntasks-1:
+      b = (N*(k+1)) div ntasks
+    else:
+      b = N
+    let cs = coeffs[a..<b]
+    let ps = points[a..<b]
+    pending[k] = pool.spawn msmConstantineG2( cs, ps );
+    a = b
+
+  var res : G2 = infG2
+  for k in 0..<ntasks:
+    res += sync pending[k]
+
+  pool.syncAll()    
+  pool.shutdown()
+
+  GC_unref(coeffs) 
+  GC_unref(points) 
+
+  return res
 
 #-------------------------------------------------------------------------------
 
@@ -152,8 +217,8 @@ func msmNaiveG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 =
 
 #-------------------------------------------------------------------------------
 
-func msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
-func msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
+proc msmG1*( coeffs: seq[Fr] , points: seq[G1] ): G1 = msmConstantineG1(coeffs, points)
+proc msmG2*( coeffs: seq[Fr] , points: seq[G2] ): G2 = msmConstantineG2(coeffs, points)
 
 #-------------------------------------------------------------------------------
 

@@ -3,6 +3,7 @@ import sugar
 import std/strutils
 import std/sequtils
 import std/os
+import std/cpuinfo
 import std/parseopt
 import std/times
 import std/options
@@ -127,6 +128,9 @@ proc parseCliOptions(): Config =
   if swCtr==0 and argCtr==0:
     printHelp()
     quit()
+
+  if cfg.nthreads <= 0: 
+    cfg.nthreads = countProcessors()
 
   return cfg
 

@@ -99,8 +99,6 @@ proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] 
   let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
   let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
 
-  # echo("msm with #threads =  " & $nthreads)
-
   var pool = Taskpool.new(num_threads = nthreads)
   var pending : seq[FlowVar[mycurves.G1]] = newSeq[FlowVar[mycurves.G1]](ntasks)
 
@@ -142,12 +140,9 @@ proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] 
   let nthreads = max( 1 , min( N div 128 , nthreads_target ) )
   let ntasks   = if nthreads>1: (nthreads*task_multiplier) else: 1
 
-  # echo("G2 msm with #threads =  " & $nthreads)
-
   var pool = Taskpool.new(num_threads = nthreads)
   var pending : seq[FlowVar[mycurves.G2]] = newSeq[FlowVar[mycurves.G2]](ntasks)
 
-  # nim is just batshit crazy...
   GC_ref(coeffs) 
   GC_ref(points) 
 

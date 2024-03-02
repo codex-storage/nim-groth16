@@ -107,6 +107,7 @@ func multiplyByPowers( xs: seq[Fr], eta: Fr ): seq[Fr] =
 
 # interpolates a polynomial, shift the variable by `eta`, and compute the shifted values
 func shiftEvalDomain( values: seq[Fr], D: Domain, eta: Fr ): seq[Fr] =
+  echo "task: abc.values: ", values.unsafeAddr.pointer.repr
   let poly : Poly = polyInverseNTT( values , D )
   let cs : seq[Fr] = poly.coeffs
   var ds : seq[Fr] = multiplyByPowers( cs, eta )
@@ -128,16 +129,13 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
   let invZ1 = invFr( smallPowFr(eta,n) - oneFr )
 
   var pool = Taskpool.new(num_threads = nthreads)
-  GCref(abc.valuesAz)
-  GCref(abc.valuesBz)
-  GCref(abc.valuesCz)
+  echo "main: abc.valuesAz: ", abc.valuesAz.unsafeAddr.pointer.repr
+  echo "main: abc.valuesBz: ", abc.valuesBz.unsafeAddr.pointer.repr
+  echo "main: abc.valuesCz: ", abc.valuesCz.unsafeAddr.pointer.repr
   var A1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
   var B1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
   var C1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
   pool.syncAll() 
-  GCunref(abc.valuesAz)
-  GCunref(abc.valuesBz)
-  GCunref(abc.valuesCz)
   let A1 = sync A1fv
   let B1 = sync B1fv
   let C1 = sync C1fv

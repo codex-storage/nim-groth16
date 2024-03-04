@@ -102,10 +102,6 @@ proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] 
   var pool = Taskpool.new(num_threads = nthreads)
   var pending : seq[FlowVar[mycurves.G1]] = newSeq[FlowVar[mycurves.G1]](ntasks)
 
-  # nim is just batshit crazy...
-  GC_ref(coeffs) 
-  GC_ref(points) 
-
   var a : int = 0
   var b : int
   for k in 0..<ntasks:
@@ -125,9 +121,6 @@ proc msmMultiThreadedG1*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G1] 
   pool.syncAll()    
   pool.shutdown()
 
-  GC_unref(coeffs) 
-  GC_unref(points) 
-
   return res
 
 #---------------------------------------
@@ -142,9 +135,6 @@ proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] 
 
   var pool = Taskpool.new(num_threads = nthreads)
   var pending : seq[FlowVar[mycurves.G2]] = newSeq[FlowVar[mycurves.G2]](ntasks)
-
-  GC_ref(coeffs) 
-  GC_ref(points) 
 
   var a : int = 0
   var b : int
@@ -164,9 +154,6 @@ proc msmMultiThreadedG2*( nthreads_hint: int, coeffs: seq[Fr] , points: seq[G2] 
 
   pool.syncAll()    
   pool.shutdown()
-
-  GC_unref(coeffs) 
-  GC_unref(points) 
 
   return res
 

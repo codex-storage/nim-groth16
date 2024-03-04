@@ -19,14 +19,14 @@ at your choice.
 
 ### TODO
 
-- [ ] find and fix the _second_ totally surreal bug
+- [x] find and fix the _second_ totally surreal bug
 - [ ] clean up the code
 - [ ] make it compatible with the latest constantine and also Nim 2.0.x
 - [x] make it a nimble package
 - [ ] compare `.r1cs` to the "coeffs" section of `.zkey`
 - [x] generate fake circuit-specific setup ourselves
 - [x] make a CLI interface
-- [ ] multithreading support (MSM, and possibly also FFT)
+- [x] multithreading support (MSM, and possibly also FFT)
 - [ ] add Groth16 notes
 - [ ] document the `snarkjs` circuit-specific setup `H` points convention
 - [ ] make it work for different curves

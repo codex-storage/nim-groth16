@@ -128,16 +128,11 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
   let invZ1 = invFr( smallPowFr(eta,n) - oneFr )
 
   var pool = Taskpool.new(num_threads = nthreads)
-  GCref(abc.valuesAz)
-  GCref(abc.valuesBz)
-  GCref(abc.valuesCz)
+
   var A1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
   var B1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
   var C1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
-  pool.syncAll() 
-  GCunref(abc.valuesAz)
-  GCunref(abc.valuesBz)
-  GCunref(abc.valuesCz)
+
   let A1 = sync A1fv
   let B1 = sync B1fv
   let C1 = sync C1fv
@@ -147,7 +142,9 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
   let Q1 = polyInverseNTT( ys, D )
   let cs = multiplyByPowers( Q1.coeffs, invFr(eta) )
 
+  pool.syncAll() 
   pool.shutdown()
+
   return Poly(coeffs: cs)
 
 #---------------------------------------
@@ -158,7 +155,7 @@ proc computeQuotientPointwise( nthreads: int, abc: ABC ): Poly =
 # (shifted) Lagrange bases.
 # see <https://geometry.xyz/notebook/the-hidden-little-secret-in-snarkjs>
 #
-proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC ): seq[Fr] =
+proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC): seq[Fr] =
   let n    = abc.valuesAz.len
   assert( abc.valuesBz.len == n )
   assert( abc.valuesCz.len == n )
@@ -166,16 +163,11 @@ proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC ): seq[Fr] =
   let eta  = createDomain(2*n).domainGen
 
   var pool = Taskpool.new(num_threads = nthreads)
-  GCref(abc.valuesAz)
-  GCref(abc.valuesBz)
-  GCref(abc.valuesCz)
+
   var A1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesAz, D, eta )
   var B1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesBz, D, eta )
   var C1fv : FlowVar[seq[Fr]] = pool.spawn shiftEvalDomain( abc.valuesCz, D, eta )
-  pool.syncAll() 
-  GCunref(abc.valuesAz)
-  GCunref(abc.valuesBz)
-  GCunref(abc.valuesCz)
+
   let A1 = sync A1fv
   let B1 = sync B1fv
   let C1 = sync C1fv
@@ -183,8 +175,33 @@ proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC ): seq[Fr] =
   var ys : seq[Fr] = newSeq[Fr]( n )
   for j in 0..<n: ys[j] = ( A1[j] * B1[j] - C1[j] ) 
 
+  pool.syncAll() 
   pool.shutdown()
+
   return ys
+
+#[
+
+proc computeSnarkjsScalarCoeffs_st( abc: ABC ): seq[Fr] =
+  let n    = abc.valuesAz.len
+  assert( abc.valuesBz.len == n )
+  assert( abc.valuesCz.len == n )
+  let D    = createDomain(n)
+  let eta  = createDomain(2*n).domainGen
+  let A1 : seq[Fr] = shiftEvalDomain( abc.valuesAz, D, eta )
+  let B1 : seq[Fr] = shiftEvalDomain( abc.valuesBz, D, eta )
+  let C1 : seq[Fr] = shiftEvalDomain( abc.valuesCz, D, eta )
+  var ys : seq[Fr] = newSeq[Fr]( n )
+  for j in 0..<n: ys[j] = ( A1[j] * B1[j] - C1[j] ) 
+  return ys
+
+proc computeSnarkjsScalarCoeffs( nthreads: int, abc: ABC ): seq[Fr] =
+  if nthreads <= 1:
+    computeSnarkjsScalarCoeffs_st( abc )
+  else:
+    computeSnarkjsScalarCoeffs_mt( nthreads, abc )
+
+]#
 
 #-------------------------------------------------------------------------------
 # the prover
@@ -196,6 +213,9 @@ type
     s*: Fr              # for zero knowledge
 
 proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns: Witness, mask: Mask ): Proof =
+
+  when not (defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc)):
+    {.fatal: "Compile with arc/orc!".}
 
   # if (zkey.header.curve != wtns.curve):
   #   echo( "zkey.header.curve = " & ($zkey.header.curve) )
@@ -286,7 +306,7 @@ proc generateProofWithMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns
 #-------------------------------------------------------------------------------
 
 proc generateProofWithTrivialMask*( nthreads: int, printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
-  let mask = Mask(r: intToFr(0), s: intToFr(0))
+  let mask = Mask( r: zeroFr , s: zeroFr )
   return generateProofWithMask( nthreads, printTimings, zkey, wtns, mask )
 
 proc generateProof*( nthreads: int, printTimings: bool, zkey: ZKey, wtns: Witness ): Proof =
